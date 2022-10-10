@@ -45,7 +45,15 @@ port=5432
 dbname=tech-skills
 
 
-9. Run `fetch_forms_from_edgar.py`
+9. Run `load_listed_company_submissions.py`
+
+
+10. Run `fetch_forms_from_edgar.py`
+
+11. Run `fetch_forms_from_edgar.py --year` _10 years ago_
+
+
+----------------------------------------------------------------------
 
 (Maybe also...)
 - https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip

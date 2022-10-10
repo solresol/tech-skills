@@ -114,6 +114,20 @@ create table filings (
   primary key (cikcode, accessionNumber)
 );
 create index on filings(cikcode);
+create index on filings(extract(year from filingDate));
+create unique index on filings(document_storage_url);
+
+create table html_doc_cache (
+  url varchar primary key,
+  content text,
+  date_fetch timestamp default current_timestamp
+);
+
+create table html_fetch_failures (
+  url varchar primary key,
+  status_code int,
+  date_attempted  timestamp default current_timestamp
+);
 
 
 
