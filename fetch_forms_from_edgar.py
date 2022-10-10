@@ -14,6 +14,9 @@ parser.add_argument("--year",
 parser.add_argument("--progress",
                     action="store_true",
                     help="Show a progress bar")
+parser.add_argument("--form",
+                    default="DEF 14A",
+                    help="Which forms to select for download")
 parser.add_argument("--retry-past-failures",
                     action="store_true",
                     help="If a document was unfetchable in the past, normally we don't try again, but with this option we will")
@@ -29,9 +32,10 @@ read_cursor = conn.cursor()
 write_cursor = conn.cursor()
 
 unfetched = """
-  select document_storage_url 
-    from filings 
-   where extract(year from filingDate) = %s
+  select document_storage_url
+    from filings
+   where form = %s
+     and extract(year from filingDate) = %s
      and document_storage_url not in (select url from html_doc_cache)
 """
 
@@ -40,7 +44,7 @@ if args.retry_past_failures:
 else:
     unfetched += " and document_storage_url not in (select url from html_fetch_failures)"
 
-read_cursor.execute(unfetched, [args.year])
+read_cursor.execute(unfetched, [args.form, args.year])
 
 if args.progress:
     import tqdm
@@ -48,7 +52,7 @@ if args.progress:
 else:
     iterator = read_cursor
 
-for row in read_cursor:
+for row in iterator:
     url = row[0]
     my_user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36'
     r = requests.get(url, headers={'User-Agent': my_user_agent})
