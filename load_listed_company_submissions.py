@@ -13,6 +13,13 @@ parser.add_argument("--database-config",
 parser.add_argument("--progress",
                     action="store_true",
                     help="Show a progress bar")
+parser.add_argument("--only-cikcode",
+                    type=int,
+                    help="Only process one cikcode (for debugging)")
+parser.add_argument("--verbose",
+                    action="store_true",
+                    help="Lots of debugging messages")
+
 args = parser.parse_args()
 
 
@@ -22,6 +29,14 @@ import pgconnect
 import logging
 import json
 
+
+if args.verbose:
+    logging.basicConfig(
+        format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+        level=logging.INFO,
+        datefmt='%Y-%m-%d %H:%M:%S')
+    logging.info("Starting")
+
 submissions = zipfile.ZipFile(args.submissions_zip)
 conn = pgconnect.connect(args.database_config)
 read_cursor = conn.cursor()
@@ -29,21 +44,21 @@ write_cursor = conn.cursor()
 
 filing_columns = ['accessionNumber', 'filingDate', 'reportDate', 'acceptanceDateTime', 'act', 'form', 'fileNumber', 'filmNumber', 'items', 'size', 'isXBRL', 'isInlineXBRL', 'primaryDocument', 'primaryDocDescription']
 insertion_query = """
-insert into filings 
+insert into filings
    (cikcode,
-    accessionNumber, 
-    filingDate, 
-    reportDate, 
-    acceptanceDateTime, 
-    act, 
-    form, 
-    fileNumber, 
-    filmNumber, 
-    items, 
-    size, 
-    isXBRL, 
+    accessionNumber,
+    filingDate,
+    reportDate,
+    acceptanceDateTime,
+    act,
+    form,
+    fileNumber,
+    filmNumber,
+    items,
+    size,
+    isXBRL,
     isInlineXBRL,
-    primaryDocument, 
+    primaryDocument,
     primaryDocDescription) values (
      %s,%s,%s,
      nullif(%s, '') :: date,
@@ -54,23 +69,26 @@ insert into filings
      %s,%s
     )
     on conflict on constraint filings_pkey do update set
-    filingDate = %s, 
+    filingDate = %s,
     reportDate = nullif(%s, '') :: date,
     acceptanceDateTime = nullif(%s, '') :: date,
     act = %s,
     form = %s,
     fileNumber = %s,
-    filmNumber = %s, 
+    filmNumber = %s,
     items = %s,
-    size = %s, 
-    isXBRL = %s :: boolean, 
+    size = %s,
+    isXBRL = %s :: boolean,
     isInlineXBRL = %s :: boolean,
-    primaryDocument = %s, 
+    primaryDocument = %s,
     primaryDocDescription = %s
    """
 
+if args.only_cikcode:
+    read_cursor.execute("select distinct cikcode from listed_company_details where cikcode = %s", [args.only_cikcode])
+else:
+    read_cursor.execute("select distinct cikcode from listed_company_details")
 
-read_cursor.execute("select distinct cikcode from listed_company_details")
 if args.progress:
     import tqdm
     iterator = tqdm.tqdm(read_cursor, total=read_cursor.rowcount)
@@ -94,11 +112,14 @@ for row in iterator:
         logging.critical(f"Cannot even count the number of submissions with cikcode = {cikcode}")
         continue
     if c[0] == 0:
+        logging.info(f"cikcode {cikcode} is new")
         write_cursor.execute("insert into submissions_raw(submission) values (%s)", [data])
     else:
+        logging.info(f"Updating existing cikcode {cikcode}")
         write_cursor.execute("update submissions_raw set submission = %s where jsonb_extract_path_text(submission,'cik') :: int = %s", [data, cikcode])
     # Store the filing information in a separate table
-    for i in range(len(json_data['filings']['recent'])):
+    logging.info(f"Cikcode = {cikcode} has {len(json_data['filings']['recent']['accessionNumber'])} rows")
+    for i in range(len(json_data['filings']['recent']['accessionNumber'])):
         def get_column(x):
             column = json_data['filings']['recent'][x]
             if i < len(column):
