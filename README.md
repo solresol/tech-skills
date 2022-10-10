@@ -48,9 +48,15 @@ dbname=tech-skills
 9. Run `load_listed_company_submissions.py`
 
 
-10. Run `fetch_forms_from_edgar.py`
-
-11. Run `fetch_forms_from_edgar.py --year` _10 years ago_
+10. Run `fetch_forms_from_edgar.py` and `fetch_forms_from_edgar.py --year` _10 years ago_
+(Or do as I did, and run
+```sh
+for y in $(seq 2022 -1 2001)
+do
+   banner $y
+   ./fetch_forms_from_edgar.py --progress --year $y
+done
+```
 
 
 ----------------------------------------------------------------------
