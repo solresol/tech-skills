@@ -2,3 +2,4 @@ pandas
 psycopg2
 tqdm
 requests
+beautifulsoup4
