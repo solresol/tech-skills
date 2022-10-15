@@ -59,10 +59,10 @@ for row in iterator:
     if r.status_code != 200:
         write_cursor.execute("insert into html_fetch_failures (url, status_code) values (%s, %s) on conflict (url) do update set status_code = %s, date_attempted = current_timestamp",
                              [url, r.status_code, r.status_code])
-        logging.error(r"Could not fetch {url}: {r.status_code}")
+        logging.error(f"Could not fetch {url}: {r.status_code}")
         conn.commit()
         continue
-    write_cursor.execute("insert into html_doc_cache (url, content) values (%s, %s)", [url, r.content])
+    write_cursor.execute("insert into html_doc_cache (url, content, encoding, content_type) values (%s, %s, %s, %s)", [url, r.content, r.encoding, r.headers.get('content-type')])
     conn.commit()
     # Chill out so we don't hit rate limits
     time.sleep(1)

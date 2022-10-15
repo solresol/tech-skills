@@ -119,7 +119,9 @@ create unique index on filings(document_storage_url);
 
 create table html_doc_cache (
   url varchar primary key,
-  content text,
+  content bytea,
+  encoding varchar,
+  content_type varchar,
   date_fetch timestamp default current_timestamp
 );
 
