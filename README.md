@@ -57,10 +57,11 @@ done
 ```
 
 
+11. Run `extract_tables.py`
+
+12. Run `table_director_affinity.py`
+
 ----------------------------------------------------------------------
 
 (Maybe also...)
 - https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip
-
-
-

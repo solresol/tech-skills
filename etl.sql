@@ -161,4 +161,17 @@ select
  group by first.company_id, second.company_id;
 create index on company_connectivity(company1);
 create index on company_connectivity(company2);
-create index on company_connectivity(company1, company2); 
+create index on company_connectivity(company1, company2);
+
+
+create view directors_active_on_filing_date as
+ select filingDate,accessionnumber,form, cikcode, board_name, company_id, director_id,
+ director_name, forename1, surname,
+	filingDate - role_start_date as time_already_in_role,
+	role_end_date - filingDate as time_left_in_role
+   from filings
+   join listed_company_details using (cikcode)
+   join board_composition using (company_id)
+   join individual_director_profile_details using (director_id)
+  where (role_start_date < filingDate or role_start_date is null)
+    and (role_end_date > filingDate or role_end_date is null);

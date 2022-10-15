@@ -142,3 +142,59 @@ create table edgar_def14a_raw (
 create index on edgar_def14a_raw(cikcode);
 create index on edgar_def14a_raw(cikcode, reportDate);
 create index on edgar_def14a_raw(reportDate);
+
+
+create table filings_with_no_tables (
+  cikcode integer,
+  accessionnumber varchar,
+  FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
+);
+create unique index on filings_with_no_tables(cikcode, accessionnumber);
+
+
+create table filing_tables (
+  table_id serial primary key,
+  cikcode integer,
+  accessionnumber varchar,
+  table_number int,
+  html text,
+  FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
+);
+create unique index on filing_tables(cikcode, accessionnumber, table_number);
+
+create view filings_needing_table_extraction as
+  select distinct
+	   filings.cikcode,
+	   filings.accessionnumber,
+	   filings.document_storage_url
+      from filings left join filings_with_no_tables using (cikcode, accessionnumber)
+		   left join filing_tables using (cikcode, accessionnumber)
+  where filings_with_no_tables.cikcode is null
+    and filing_tables.cikcode is null;
+
+
+create table table_director_affinity (
+  table_id int primary key references filing_tables,
+  number_of_columns int,
+  number_of_rows int,
+  max_director_names_mentioned_in_any_row int,
+  max_director_names_mentioned_in_any_column int,
+  number_of_distinct_relevant_director_surnames int,
+  max_director_mentions int generated always as (greatest(max_director_names_mentioned_in_any_row, max_director_names_mentioned_in_any_column)) stored,
+  directors_are_column_headers boolean generated always as (max_director_names_mentioned_in_any_row > max_director_names_mentioned_in_any_column) stored,
+  directors_are_row_headers boolean generated always as (max_director_names_mentioned_in_any_row < max_director_names_mentioned_in_any_column) stored
+);
+
+create view tables_with_strongest_director_name_affinity as
+with ranked_director_mentions as
+(select table_id, cikcode, accessionnumber, table_number,
+  max_director_mentions,
+  rank() over (partition by cikcode, accessionnumber order by max_director_mentions desc)
+     as max_director_mentions_rank,
+  number_of_distinct_relevant_director_surnames,
+  directors_are_column_headers,
+  directors_are_row_headers
+ from table_director_affinity join filing_tables using (table_id))
+select * from ranked_director_mentions
+ where max_director_mentions_rank = 1
+ order by cikcode, accessionnumber, table_number;
