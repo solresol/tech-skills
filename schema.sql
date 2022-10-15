@@ -99,18 +99,18 @@ create table filings (
       generated always as (replace(accessionNumber, '-', '')) stored,
   document_storage_url varchar
       generated always as (
-             'https://www.sec.gov/Archives/edgar/data/'
-  	  || (cikcode :: varchar)
+	     'https://www.sec.gov/Archives/edgar/data/'
+	  || (cikcode :: varchar)
 	  || '/'
 	  || replace(accessionNumber, '-', '')
 	  || '/'
 	  || primaryDocument) stored,
   document_url_links_relative_to varchar
       generated always as (
-             'https://www.sec.gov/Archives/edgar/data/'
-  	  || (cikcode :: varchar)
+	     'https://www.sec.gov/Archives/edgar/data/'
+	  || (cikcode :: varchar)
 	  || '/'
-	  || replace(accessionNumber, '-', '')) stored,	  
+	  || replace(accessionNumber, '-', '')) stored,
   primary key (cikcode, accessionNumber)
 );
 create index on filings(cikcode);
