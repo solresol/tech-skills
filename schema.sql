@@ -1,3 +1,5 @@
+create extension if not exists pg_trgm;
+
 create table board_composition_raw (
        CompanyID varchar,
        DirectorID varchar,

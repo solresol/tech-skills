@@ -23,8 +23,9 @@ create index on listed_company_details(cikcode); -- hmm, cikcodes are not unique
 create unique index on listed_company_details(company_id);
 create index on listed_company_details(ticker); -- ticket codes are not unique?!?!?
 
-
-
+create INDEX ON listed_company_details USING GIST(board_name gist_trgm_ops);
+create index on listed_company_details(sector);
+create INDEX ON listed_company_details USING GIST(sector gist_trgm_ops);
 
 
 
