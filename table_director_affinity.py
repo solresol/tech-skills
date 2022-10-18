@@ -24,7 +24,9 @@ parser.add_argument("--accession-number",
 parser.add_argument("--table-id",
                     type=int,
                     help="Only process the table number specified")
-
+parser.add_argument("--random-order",
+                    action="store_true",
+                    help="It doesn't matter what order things get processed in. Save the time doing the sort")
 args = parser.parse_args()
 
 import pgconnect
@@ -54,14 +56,17 @@ if args.accession_number is not None:
     constraints.append("accessionnumber = %s")
     constraint_args.append(args.accession_number)
 if args.table_id is not None:
-    constraints.append("table_id = %s")
+    constraints.append("filing_tables.table_id = %s")
     constraint_args.append(args.table_id)
 if len(constraints) == 0:
     constraints = ""
 else:
     constraints = " AND " + (' and '.join(constraints))
 
-query = "select cikcode, accessionnumber, table_id, table_number, html from filing_tables where table_id not in (select table_id from table_director_affinity) " + constraints + " order by cikcode, accessionnumber, table_number"
+query = "select cikcode, accessionnumber, filing_tables.table_id, table_number, html from filing_tables left join table_director_affinity using (table_id) where table_director_affinity.table_id is null " + constraints
+
+if not args.random_order:
+    query += " order by cikcode, accessionnumber, table_number"
 if args.stop_after is not None:
     query += f" limit {args.stop_after}"
 
@@ -113,13 +118,16 @@ for row in iterator:
     table_id = row[2]
     table_number = row[3]
     html = row[4]
+    logging.info(f"Processing {cikcode=}, {accessionnumber=}, {table_id=}, {table_number=}")
     director_surnames = lookup_directors(cikcode, accessionnumber)
     word_pool_counter = make_word_pool_counter(director_surnames)
     try:
         tables = pandas.read_html(html)
     except ValueError:
+        logging.info("Could not extract a pandas table")
         tables = []
     if len(tables) == 0:
+        logging.info("No tables extracted")
         write_cursor.execute("insert into table_director_affinity (table_id, number_of_columns, number_of_rows, max_director_names_mentioned_in_any_row, max_director_names_mentioned_in_any_column, number_of_distinct_relevant_director_surnames) values (%s, null, null, null, null, %s)",
                          [table_id, len(director_surnames)])
         conn.commit()
@@ -129,8 +137,15 @@ for row in iterator:
         sys.exit(f"There is something very strange in the HTML for table_id = {table_id}. Found {len(tables)} in the html: {html}")
     the_table = tables[0]
     number_of_rows, number_of_columns = tables[0].shape
-    rowish_stuff = the_table.apply(word_pool_counter, axis=1).max()
-    columnish_stuff = the_table.apply(word_pool_counter).max()
+    if number_of_rows == 0:
+        rowish_stuff = None
+    else:
+        rowish_stuff = the_table.apply(word_pool_counter, axis=1).max()
+    if number_of_columns == 0:
+        columnish_stuff = None
+    else:
+        columnish_stuff = the_table.apply(word_pool_counter).max()
+    logging.info(f"Inserting {table_id=}, {number_of_columns=}, {number_of_rows=}, {rowish_stuff=}, {columnish_stuff=}, {len(director_surnames)=}")
     write_cursor.execute("insert into table_director_affinity (table_id, number_of_columns, number_of_rows, max_director_names_mentioned_in_any_row, max_director_names_mentioned_in_any_column, number_of_distinct_relevant_director_surnames) values (%s, %s, %s, %s, %s, %s)",
                          [table_id, number_of_columns, number_of_rows, rowish_stuff, columnish_stuff, len(director_surnames)])
     conn.commit()
