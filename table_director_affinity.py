@@ -34,6 +34,7 @@ import logging
 import pandas
 import functools
 import sys
+from html_table_extractor.extractor import Extractor
 
 if args.verbose:
     logging.basicConfig(
@@ -105,6 +106,8 @@ def make_word_pool_counter(word_pool):
                 continue
             if type(cell) == int:
                 continue
+            if cell is None:
+                continue
             cell = cell.upper()
             for w in word_pool:
                 if w in cell:
@@ -116,27 +119,32 @@ for row in iterator:
     cikcode = row[0]
     accessionnumber = row[1]
     table_id = row[2]
+    if args.progress:
+        iterator.set_description(str(table_id))
     table_number = row[3]
     html = row[4]
     logging.info(f"Processing {cikcode=}, {accessionnumber=}, {table_id=}, {table_number=}")
     director_surnames = lookup_directors(cikcode, accessionnumber)
     word_pool_counter = make_word_pool_counter(director_surnames)
-    try:
-        tables = pandas.read_html(html)
-    except ValueError:
-        logging.info("Could not extract a pandas table")
-        tables = []
-    if len(tables) == 0:
-        logging.info("No tables extracted")
-        write_cursor.execute("insert into table_director_affinity (table_id, number_of_columns, number_of_rows, max_director_names_mentioned_in_any_row, max_director_names_mentioned_in_any_column, number_of_distinct_relevant_director_surnames) values (%s, null, null, null, null, %s)",
-                         [table_id, len(director_surnames)])
-        conn.commit()
-        continue
+    extraction = Extractor(html)
+    extraction.parse()
+    the_table = pandas.DataFrame(extraction.return_list())
+    #try:
+    #    tables = pandas.read_html(html)
+    #except ValueError:
+    #    logging.info("Could not extract a pandas table")
+    #    tables = []
+    #if len(tables) == 0:
+    #    logging.info("No tables extracted")
+    #    write_cursor.execute("insert into table_director_affinity (table_id, number_of_columns, number_of_rows, max_director_names_mentioned_in_any_row, max_director_names_mentioned_in_any_column, number_of_distinct_relevant_director_surnames) values (%s, null, null, null, null, %s)",
+    #                     [table_id, len(director_surnames)])
+    #    conn.commit()
+    #    continue
     # There should only be one table.
-    if len(tables) != 1:
-        sys.exit(f"There is something very strange in the HTML for table_id = {table_id}. Found {len(tables)} in the html: {html}")
-    the_table = tables[0]
-    number_of_rows, number_of_columns = tables[0].shape
+    #if len(tables) != 1:
+    #    sys.exit(f"There is something very strange in the HTML for table_id = {table_id}. Found {len(tables)} in the html: {html}")
+    # the_table = tables[0]
+    number_of_rows, number_of_columns = the_table.shape
     if number_of_rows == 0:
         rowish_stuff = None
     else:

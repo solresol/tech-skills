@@ -39,6 +39,10 @@ if args.html:
 
 if args.csv:
     import pandas
-    tables = pandas.read_html(content)
-    the_table = tables[0]
+    from html_table_extractor.extractor import Extractor
+    extraction = Extractor(content)
+    extraction.parse()
+    the_table = pandas.DataFrame(extraction.return_list())
+    #tables = pandas.read_html(content)
+    #the_table = tables[0]
     the_table.to_csv(sys.stdout, index=False)

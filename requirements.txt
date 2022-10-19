@@ -3,3 +3,4 @@ psycopg2
 tqdm
 requests
 beautifulsoup4
+html-table-extractor
