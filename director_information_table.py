@@ -29,6 +29,8 @@ class DirectorInformationTable:
         x_count = {}
         for name in uppercase_surnames:
             for cell in self.cells:
+                if self.cells[cell] is None:
+                    continue
                 if name in self.cells[cell].upper():
                     x,y = cell
                     if x not in x_count:
