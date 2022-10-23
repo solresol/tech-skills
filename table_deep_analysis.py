@@ -65,7 +65,7 @@ left join tables_without_content_index using (table_id)
    AND tables_without_mentioned_directors.table_id is null
    AND table_deep_details.table_id is null
    AND tables_without_content_index.table_id is null
-   AND max_director_mentions > %s
+   AND max_director_mentions >= %s
 """
 
 constraints = []
@@ -127,6 +127,9 @@ for outer_row in iterator:
                          [table_id, grid.header_idx, grid.content_index_column])
     for director_surname, index_position in grid.director_column_numbers.items():
         director_id = upper_surnames.get(director_surname.upper())
+        if index_position is None:
+            logging.warning(f"Skipped director surname {director_surname} on table {table_id} because there might have been duplication on the surname {upper_surnames}")
+            continue
         if director_id is None:
             logging.warning(f"Skipped director surname {director_surname} on table {table_id} because I couldn't match it to a director_id using {upper_surnames}")
             continue
