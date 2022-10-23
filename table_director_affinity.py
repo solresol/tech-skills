@@ -35,6 +35,7 @@ import pandas
 import functools
 import sys
 from html_table_extractor.extractor import Extractor
+import director_name_handling
 
 if args.verbose:
     logging.basicConfig(
@@ -79,22 +80,11 @@ if args.progress:
 else:
     iterator = read_cursor
 
-def remove_name_suffixes(name):
-    name_split = name.split()
-    if len(name_split) == 1:
-        return name
-    while name_split[0].title() != name_split[0]:
-        if len(name_split) == 1:
-            # OK, I've messed up somehow. Emergency option
-            return name.split()[0]
-        name_split = name_split[1:]
-    return name_split[0]
-
 @functools.lru_cache(20)
 def lookup_directors(cikcode, accessionnumber):
     director_read_cursor.execute("select surname from directors_active_on_filing_date where cikcode = %s and accessionnumber = %s",
                                  [cikcode, accessionnumber])
-    director_surnames = [remove_name_suffixes(x[0]) for x in director_read_cursor]
+    director_surnames = [director_name_handling.remove_name_suffixes(x[0]) for x in director_read_cursor]
     return director_surnames
 
 def make_word_pool_counter(word_pool):
