@@ -61,6 +61,8 @@ done
 
 12. Run `table_director_affinity.py`
 
+13. Run `table_deep_analysis.py`
+
 ----------------------------------------------------------------------
 
 (Maybe also...)

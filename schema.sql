@@ -188,6 +188,62 @@ create table table_director_affinity (
   directors_are_column_headers boolean generated always as (max_director_names_mentioned_in_any_row > max_director_names_mentioned_in_any_column) stored,
   directors_are_row_headers boolean generated always as (max_director_names_mentioned_in_any_row < max_director_names_mentioned_in_any_column) stored
 );
+create index on table_director_affinity (table_id) where directors_are_column_headers OR directors_are_row_headers;
+
+create table tables_without_mentioned_directors (
+  table_id int primary key references filing_tables
+);
+
+create table tables_without_content_index (
+   table_id int primary key references filing_tables
+);
+
+create table table_deep_details (
+   table_id int primary key references filing_tables,
+   director_index_position int not null, -- e.g. 2 means that there are two irrelevant rows above or two irrelevant columns to the left
+   content_index_position int not null -- if directors_are_column_headers then this is a row number
+);
+
+create table directors_mentioned_in_table (
+   table_id int not null references filing_tables,
+   director_id int not null, -- references  individual_director_profile_details
+   surname_fragment_used varchar not null,
+   index_position_of_director int not null check (index_position_of_director >= 0),
+   primary key (table_id, director_id)
+);
+
+create table attributes_of_directors_mentioned_in_table (
+   table_id int not null references filing_tables,
+   index_position int not null,
+   attribute_name varchar not null,
+   primary key (table_id, index_position)
+);
+
+create table low_variance_regions_in_table (
+   table_id int not null references filing_tables,
+   region_id int not null,
+   starting_row int not null,
+   ending_row int not null check (ending_row > starting_row),
+   distinct_value_count int not null,
+   number_of_rows int generated always as (ending_row - starting_row) stored,
+   primary key (table_id, region_id)
+);
+create unique index on low_variance_regions_in_table (table_id, starting_row, ending_row);
+
+
+create table denormalised_table (
+   original_table_id int not null references filing_tables(table_id),
+   director_id int not null,
+   attribute_index_position int not null,
+   attribute_value varchar not null,
+   foreign key (original_table_id, director_id) references directors_mentioned_in_table(table_id, director_id),
+   foreign key (original_table_id, attribute_index_position) references attributes_of_directors_mentioned_in_table(table_id, index_position)
+);
+
+
+
+
+----------------------------------------------------------------------
 
 create view tables_with_strongest_director_name_affinity as
 with ranked_director_mentions as
@@ -202,3 +258,4 @@ with ranked_director_mentions as
 select * from ranked_director_mentions
  where max_director_mentions_rank = 1
  order by cikcode, accessionnumber, table_number;
+
