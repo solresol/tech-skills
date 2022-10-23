@@ -61,7 +61,10 @@ class DirectorInformationTable:
                 self.director_column_numbers[who] = None
                 continue
             self.director_column_numbers[who] = y
-        self.lowest_director_column_index = min(self.director_column_numbers.values())
+        if len(self.director_column_numbers) == 0:
+            self.lowest_director_column_index = None
+        else:
+            self.lowest_director_column_index = min(self.director_column_numbers.values())
 
     def find_index_for_content(self):
         self.content_index_column = None
