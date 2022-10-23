@@ -61,14 +61,18 @@ class DirectorInformationTable:
                 self.director_column_numbers[who] = None
                 continue
             self.director_column_numbers[who] = y
-        if len(self.director_column_numbers) == 0:
+        column_indexes = [x for x in self.director_column_numbers.values() if x is not None]
+        if len(column_indexes) == 0:
             self.lowest_director_column_index = None
         else:
-            self.lowest_director_column_index = min(self.director_column_numbers.values())
+            self.lowest_director_column_index = min(column_indexes)
 
     def find_index_for_content(self):
         self.content_index_column = None
         diversity_score = 0
+        if self.lowest_director_column_index is None:
+            self.content_index = {}
+            return
         for i in range(self.lowest_director_column_index):
             distinct_data = set()
             for x in self.row_numbers:
