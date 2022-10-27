@@ -52,7 +52,10 @@ class DirectorInformationTable:
         for y in self.column_numbers:
             if (self.header_idx,y) not in self.cells:
                 continue
-            data = self.cells[(self.header_idx,y)].upper()
+            data = self.cells[(self.header_idx,y)]
+            if data is None:
+                continue
+            data = data.upper()
             who = [name for name in uppercase_surnames if name in data]
             if len(who) > 1 or len(who) < 1:
                 continue
