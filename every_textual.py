@@ -162,7 +162,7 @@ def headings_tables_and_text(congee, level_leader_position=None):
         # We are not a table. We are not a navigable string. We are not a heading.
         # There are no paragraphs below us. There are no tables below us.
         if child.name in ['tr', 'td', 'p', 'li', 'ul', 'ol', 'dd', 'dt', 'div', 'caption', 'main',
-                          'blockquote', 'datalist', 'details', 'page', 'dl', 'html']:
+                          'blockquote', 'datalist', 'details', 'page', 'dl', 'html', 'th']:
             # These don't break the flow. We can keep level leader, but we do need to clear the context
             # before handling them.
             if current_text_blob.strip() != '':
