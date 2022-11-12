@@ -63,6 +63,15 @@ done
 
 13. Run `table_deep_analysis.py`
 
+14. Run `every_textual.py`
+
+This will take about a day to run, and it is likely to have many errors and
+need to be restarted after it fails. Check the table `filings_with_textual_parse_errors`
+to see what it has died on.
+
+15. Run `python -m spacy download en_core_web_sm`
+
+
 ----------------------------------------------------------------------
 
 (Maybe also...)

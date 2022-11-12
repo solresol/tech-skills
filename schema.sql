@@ -259,3 +259,48 @@ select * from ranked_director_mentions
  where max_director_mentions_rank = 1
  order by cikcode, accessionnumber, table_number;
 
+----------------------------------------------------------------------
+
+create table filings_with_textual_parse_errors (
+  cikcode int not null,
+  accessionNumber varchar not null,
+  errors varchar not null,
+  FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
+);
+
+create table filings_parsed_successfully (
+  cikcode int not null,
+  accessionNumber varchar not null,
+  when_parsed timestamp default current_timestamp,
+  FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
+);
+
+create table document_headings (
+  cikcode int not null,
+  accessionNumber varchar not null,
+  heading_level int,
+  heading_text varchar,
+  document_position int,
+  PRIMARY KEY (cikcode, accessionnumber, document_position),
+  FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
+);
+
+create table document_table_positions (
+  cikcode int not null,
+  accessionNumber varchar not null,
+  table_number int,
+  document_position int,
+  PRIMARY KEY (cikcode, accessionnumber, document_position),
+  FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
+);
+create unique index on document_table_positions(cikcode, accessionNumber, table_number);
+
+create table document_text_positions (
+   cikcode int not null,
+   accessionNumber varchar not null,
+   document_position int not null,
+   position_of_leader int,
+   plaintext varchar,
+  PRIMARY KEY (cikcode, accessionnumber, document_position),
+  FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
+);
