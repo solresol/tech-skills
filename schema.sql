@@ -304,3 +304,33 @@ create table document_text_positions (
   PRIMARY KEY (cikcode, accessionnumber, document_position),
   FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
 );
+create index on document_text_positions using gist(plaintext gist_trgm_ops);
+
+----------------------------------------------------------------------
+
+create table keywords_to_search_for (
+  keyword varchar primary key
+);
+insert into keywords_to_search_for (keyword) values ('mathematics');
+insert into keywords_to_search_for (keyword) values ('maths');
+insert into keywords_to_search_for (keyword) values ('engineering');
+insert into keywords_to_search_for (keyword) values ('cybersecurity');
+insert into keywords_to_search_for (keyword) values ('cyber security');
+insert into keywords_to_search_for (keyword) values ('cyber-security');
+insert into keywords_to_search_for (keyword) values ('computer science');
+insert into keywords_to_search_for (keyword) values ('compsci');
+
+
+create materialized view director_mentions as
+  select keyword, filingdate, cikcode, accessionnumber, board_name, company_id, director_id,
+   director_name, forename1, surname, document_position, plaintext
+   from directors_active_on_filing_date join document_text_positions using (cikcode, accessionnumber),
+   keywords_to_search_for
+   where plaintext like ('%' || surname || '%')
+     and plaintext ilike ('%' || keyword || '%');
+create index on director_mentions(director_id);
+create index on director_mentions(surname);
+create index on director_mentions(company_id);
+create index on director_mentions(board_name);
+create index on director_mentions(keyword);
+create index on director_mentions(director_id, keyword);
