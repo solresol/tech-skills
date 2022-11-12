@@ -130,7 +130,7 @@ class DirectorInformationTable:
                     continue
                 distinct_values, value_count = self.get_range_diversity(r1,r2)
                 if value_count > 0 and value_count <= 2:
-                    yield (r1,r2, [self.content_index[x] for x in range(r1,r2+1)], value_count, distinct_values)
+                    yield (r1,r2, [self.content_index.get(x) for x in range(r1,r2+1)], value_count, distinct_values)
 
     def regions_with_few_values(self, min_size=3):                    
         raw_answers= list(self.raw_regions_with_few_values(min_size))
