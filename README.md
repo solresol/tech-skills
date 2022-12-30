@@ -80,7 +80,11 @@ Maybe with some clever indexing, I could get this to be able to be refreshed con
 
 This will take about 2 months to run, and might take an extremely long time to start.
 
+If you have a lot of spare CPUs (e.g. 8) you can do this...
 
+```sh
+./get_cikcodes.py | xargs -n 1 --max-procs 8 --verbose ./grammar_parse.py --random-order --cikcode
+```
 
 ----------------------------------------------------------------------
 
