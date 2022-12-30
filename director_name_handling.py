@@ -1,4 +1,3 @@
-
 def remove_name_suffixes(name):
     name_split = name.split()
     if len(name_split) == 1:
