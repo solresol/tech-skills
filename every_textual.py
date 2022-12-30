@@ -94,7 +94,7 @@ def headings_tables_and_text(congee, level_leader_position=None):
     
     current_text_blob = ""
     for child in congee.children:
-        if child.name in ['script', 'img', 'title', 'noscript', 's', 'del']:
+        if child.name in ['script', 'img', 'title', 'noscript', 's', 'del', 'strike', 'meta', 'head','map', 'area']:
             continue
         if child.name is None:
             # then it's a navigable string
@@ -161,8 +161,9 @@ def headings_tables_and_text(congee, level_leader_position=None):
             continue
         # We are not a table. We are not a navigable string. We are not a heading.
         # There are no paragraphs below us. There are no tables below us.
-        if child.name in ['tr', 'td', 'p', 'li', 'ul', 'ol', 'dd', 'dt', 'div', 'caption', 'main',
-                          'blockquote', 'datalist', 'details', 'page', 'dl', 'html', 'th']:
+        if child.name in ['tr', 'td', 'p', 'li', 'ul', 'ol', 'dd', 'dt', 'div', 'caption', 'captions', 'main', 'cite', 'f1',
+                          'blockquote', 'datalist', 'details', 'page', 'dl', 'html', 'th', 'pre',
+                          'body', 'document', 'c', 'dir']:
             # These don't break the flow. We can keep level leader, but we do need to clear the context
             # before handling them.
             if current_text_blob.strip() != '':
@@ -173,7 +174,8 @@ def headings_tables_and_text(congee, level_leader_position=None):
                 current_text_blob = ''
             headings_tables_and_text(child, level_leader_position=level_leader_position)
             continue 
-        if child.name in ['b', 'i', 'em', 'a', 'u', 'center', 'sup', 'strong']:
+        if child.name in ['b', 'i', 'em', 'a', 'u', 'center', 'sup', 'sub', 'strong', 'small', 'big', 'tt',
+                          'kbd', 'type']:
             #print(f"An ordinary blob of text at {position=}, with {level_leader_position=}: {child.text}")
             current_text_blob += child.text + ' '
             continue 
@@ -232,7 +234,7 @@ for row in iterator:
     accession_number = row[1]
     logging.info(f"Processing {cikcode=}, {accession_number=}")
     if args.progress:
-        iterator.set_description(cikcode + " " + accession_number)
+        iterator.set_description(str(cikcode) + " " + str(accession_number))
     filingdate = row[2]
     document_storage_url = row[3]
     logging.info(f"{document_storage_url=}") 
