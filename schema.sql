@@ -304,7 +304,68 @@ create table document_text_positions (
   PRIMARY KEY (cikcode, accessionnumber, document_position),
   FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
 );
-create index on document_text_positions using gist(plaintext gist_trgm_ops);
+create index on document_text_positions using gin(plaintext gin_trgm_ops);
+
+create table spacy_parses (
+   cikcode int not null,
+   accessionNumber varchar not null,
+   document_position int not null,
+   spacy_blob bytea not null,
+   foreign key (cikcode, accessionnumber, document_position) references document_text_positions(cikcode, accessionnumber, document_position)
+);
+
+
+create table sentences (
+   sentence_id bigserial primary key,
+   cikcode int not null,
+   accessionNumber varchar not null,
+   document_position int not null,
+   sentence_number_within_fragment int not null,
+   sentence_text varchar not null,
+   foreign key (cikcode, accessionnumber, document_position) references document_text_positions(cikcode, accessionnumber, document_position)
+);
+
+create view sentence_within_document as
+  select cikcode, accessionNumber,
+	 rank() over (order by document_position, sentence_number_within_fragment)
+	    as sentence_number_within_document,
+	 sentence_id
+    from sentences;
+
+
+create table named_entities (
+   sentence_id bigint not null references sentences,
+   named_entity varchar not null,
+   label varchar not null,
+   primary key (sentence_id, named_entity, label)
+);
+
+
+create table noun_chunks (
+   sentence_id bigint not null references sentences,
+   noun_chunk varchar not null,
+   repeat_count int not null,
+   primary key (sentence_id, noun_chunk)
+);
+
+create table prepositions (
+   sentence_id bigint not null references sentences,
+   preposition varchar not null,
+   tag varchar not null,
+   repeat_count int not null,
+   primary key (sentence_id, preposition)
+);
+
+-- ,
+--    has_single_director_mention boolean not null,
+--    has_pronoun_mention boolean not null,
+--    coreference_sentence bigint references sentences(sentence_id),
+--    director_id int,
+--    director_name varchar,
+
+-- );
+
+
 
 ----------------------------------------------------------------------
 

@@ -69,7 +69,17 @@ This will take about a day to run, and it is likely to have many errors and
 need to be restarted after it fails. Check the table `filings_with_textual_parse_errors`
 to see what it has died on.
 
-15. Run `python -m spacy download en_core_web_sm`
+15. Review the content of `keywords_to_search_for`
+
+16. Run `refresh materialized view director_mentions;`
+Maybe with some clever indexing, I could get this to be able to be refreshed concurrently.
+
+17. Run `python -m spacy download en_core_web_sm`
+
+18. Run `grammar_parse.py`
+
+This will take about 2 months to run, and might take an extremely long time to start.
+
 
 
 ----------------------------------------------------------------------
