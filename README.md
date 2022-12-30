@@ -86,3 +86,15 @@ This will take about 2 months to run, and might take an extremely long time to s
 
 (Maybe also...)
 - https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip
+
+
+
+# Utilities
+
+`get_company.py`
+
+`get_doc.py`
+
+`get_table.py`
+
+`get_cikcodes.py`
