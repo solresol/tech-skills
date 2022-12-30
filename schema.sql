@@ -135,6 +135,7 @@ create table html_fetch_failures (
 
 
 
+-- Doesn't look like I actually created this table
 create table edgar_def14a_raw (
   edgar_raw_ref serial primary key,
   cikcode varchar,
@@ -395,3 +396,6 @@ create index on director_mentions(company_id);
 create index on director_mentions(board_name);
 create index on director_mentions(keyword);
 create index on director_mentions(director_id, keyword);
+-- create unique index on director_mentions(director_id, keyword, cikcode, accessionnumber, document_position);
+-- commented out, but why are we getting duplicates?
+-- not quite right, needs to go down to the sentence level
