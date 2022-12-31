@@ -86,6 +86,22 @@ If you have a lot of spare CPUs (e.g. 8) you can do this...
 ./get_cikcodes.py | xargs -n 1 --max-procs 8 --verbose ./grammar_parse.py --random-order --cikcode
 ```
 
+19. `refresh materialized view pronoun_usage_over_time;`
+
+----
+
+What I need to do next:
+
+- Monitor the number of jobs
+
+- Re-run the xargs command to make sure we've got everything
+
+- Gendered pronouns analysis
+
+- Match named entity (PEOPLE) to directors
+
+- Extract summary sentences and see what skills they have.
+
 ----------------------------------------------------------------------
 
 (Maybe also...)
