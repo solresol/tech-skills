@@ -285,6 +285,7 @@ create table document_headings (
   PRIMARY KEY (cikcode, accessionnumber, document_position),
   FOREIGN KEY (cikcode, accessionnumber) references filings (cikcode, accessionnumber)
 );
+create index on document_headings using gin(heading_text gin_trgm_ops);
 
 create table document_table_positions (
   cikcode int not null,
@@ -312,9 +313,10 @@ create table spacy_parses (
    accessionNumber varchar not null,
    document_position int not null,
    spacy_blob bytea not null,
+   parse_time timestamp default current_timestamp,
    foreign key (cikcode, accessionnumber, document_position) references document_text_positions(cikcode, accessionnumber, document_position)
 );
-
+create index on spacy_parses(parse_time); -- so that it is possible to report on progress
 
 create table sentences (
    sentence_id bigserial primary key,
@@ -325,8 +327,10 @@ create table sentences (
    sentence_text varchar not null,
    foreign key (cikcode, accessionnumber, document_position) references document_text_positions(cikcode, accessionnumber, document_position)
 );
+create index on sentences using gin(sentence_text gin_trgm_ops);
 
-create view sentence_within_document as
+
+create view sentences_within_document as
   select cikcode, accessionNumber,
 	 rank() over (order by document_position, sentence_number_within_fragment)
 	    as sentence_number_within_document,
@@ -340,6 +344,7 @@ create table named_entities (
    label varchar not null,
    primary key (sentence_id, named_entity, label)
 );
+create index on named_entities(label);
 
 
 create table noun_chunks (
@@ -349,13 +354,121 @@ create table noun_chunks (
    primary key (sentence_id, noun_chunk)
 );
 
-create table prepositions (
+create table pronouns (
    sentence_id bigint not null references sentences,
-   preposition varchar not null,
+   pronoun varchar not null,
    tag varchar not null,
    repeat_count int not null,
-   primary key (sentence_id, preposition)
+   primary key (sentence_id, pronoun, tag)
 );
+create index on pronouns (upper(pronoun));
+
+
+create view document_position_predecessors as
+  select cikcode,
+         accessionnumber,
+	 parent.document_position,
+         child.document_position as predecessor_document_position
+   from document_text_positions as parent
+   join document_text_positions as child
+   using (cikcode, accessionnumber)
+   where child.document_position >= parent.position_of_leader
+     and child.document_position <= parent.document_position;
+
+create view sentence_predecessors as
+  select parent.sentence_id,
+         child.sentence_id as predecessor_sentence
+    from sentences as parent
+    join document_text_positions as dtp_parent using (accessionnumber, cikcode, document_position)
+    join document_position_predecessors using (accessionnumber, cikcode, document_position)
+    join document_text_positions as dtp_child on
+          (document_position_predecessors.cikcode = dtp_child.cikcode and
+	  document_position_predecessors.accessionnumber = dtp_child.accessionnumber and
+	  document_position_predecessors.predecessor_document_position = dtp_child.document_position)
+    join sentences as child on (
+        dtp_child.accessionnumber = child.accessionnumber and
+	dtp_child.cikcode = child.cikcode and
+	dtp_child.document_position = child.document_position
+	)
+   where (
+          (child.document_position < parent.document_position) or
+	  (child.sentence_number_within_fragment <= parent.sentence_number_within_fragment)
+	  );
+	
+
+    
+create view director_sentence_references as
+ select directors_active_on_filing_date.cikcode,
+        directors_active_on_filing_date.accessionnumber,
+        document_position,
+	sentence_number_within_fragment,
+--	sentence_number_within_document,
+	sentence_id,
+	sentence_text,
+	named_entity,
+        director_id,
+	company_id,
+	director_name,
+	surname
+   from
+    directors_active_on_filing_date
+   join
+    document_text_positions using (cikcode, accessionnumber)
+   join
+     sentences using (cikcode, accessionnumber, document_position)
+--   join 
+--     sentences_within_document using (sentence_id)
+   join named_entities using (sentence_id)
+   where named_entity ilike '%' || surname || '%'
+     and label = 'PERSON';
+
+
+-- create view pronoun_antecedents as 
+--     select named_entities.sentence_id as predecessor_sentence,
+--            sentence_predecessors.sentence_id as sentence_id,
+-- 	   named_entity,
+-- 	   s1.sentence_text as predecessor_text,
+-- 	   s2.sentence_text as referrant_text,
+-- 	   rank() over (partition by s2.cikcode, s2.accessionnumber order by s2.document_position desc, s2.sentence_number_within_fragment desc)
+--       from named_entities
+--       join sentence_predecessors on (named_entities.sentence_id = sentence_predecessors.predecessor_sentence)
+--       join sentences as s1 on (named_entities.sentence_id = s1.sentence_id)
+--       join  sentences as s2 on (sentence_predecessors.sentence_id = s2.sentence_id)
+--       where label = 'PERSON';
+
+
+
+create view pronoun_antecedents as 
+    select named_entities.sentence_id as predecessor_sentence,
+           sentence_predecessors.sentence_id as sentence_id,
+	   named_entity
+      from named_entities
+      join sentence_predecessors on (named_entities.sentence_id = sentence_predecessors.predecessor_sentence)
+      where label = 'PERSON';
+      
+      --and sentence_predecessors.sentence_id = 52832;
+
+create view pronoun_antecedent_horrifically_slow as
+ with unfiltered_antecedents as (
+  select pronouns.sentence_id,
+         sentence_predecessors.predecessor_sentence,
+         pronoun,
+	 tag,
+	 named_entity,
+	 company_id,
+	 director_id,
+	 director_name,
+	 surname,
+	 s1.sentence_text as sentence_text,
+	 s2.sentence_text as predecessor_text,
+	 rank() over (partition by s2.cikcode, s2.accessionnumber order by s2.document_position desc, s2.sentence_number_within_fragment desc) as reference_distance
+   from pronouns
+   join sentences s1 using (sentence_id)
+   join sentence_predecessors using (sentence_id)
+   join sentences s2 on (sentence_predecessors.predecessor_sentence = s2.sentence_id)
+   join director_sentence_references on (director_sentence_references.sentence_id = sentence_predecessors.predecessor_sentence)
+ ) select * from unfiltered_antecedents where reference_distance = 1;
+
 
 -- ,
 --    has_single_director_mention boolean not null,
@@ -368,6 +481,7 @@ create table prepositions (
 
 
 
+   
 ----------------------------------------------------------------------
 
 create table keywords_to_search_for (
@@ -399,3 +513,50 @@ create index on director_mentions(director_id, keyword);
 -- create unique index on director_mentions(director_id, keyword, cikcode, accessionnumber, document_position);
 -- commented out, but why are we getting duplicates?
 -- not quite right, needs to go down to the sentence level
+
+----------------------------------------------------------------------
+
+create view sentences_mentioning_keywords as
+  select sentence_id, sentence_text, keyword
+    from sentences, keywords_to_search_for
+     where sentence_text ilike '%' || keyword || '%';
+     
+
+----------------------------------------------------------------------
+-- Funny stuff
+
+create materialized view pronoun_usage_over_time as 
+select upper(pronoun) as pronoun,
+       extract(year from filingdate) as year,
+       case
+        when upper(pronoun) in ('HE', 'HIM', 'HIS', 'HIMSELF') then 'male'
+        when upper(pronoun) in ('SHE', 'HER', 'HERSELF') then 'female'
+	else null
+       end as pronoun_gender,
+       count(*) as number_of_uses
+  from pronouns
+  join sentences using (sentence_id)
+  join filings using (cikcode, accessionnumber)
+  group by 1, 2, 3
+  ;
+
+create view pronoun_pivot_table as
+ with male as (
+    select year, sum(number_of_uses) as number_of_uses from pronoun_usage_over_time
+       where pronoun_gender = 'male' group by year
+    ),
+    female as (
+    select year, sum(number_of_uses) as number_of_uses from pronoun_usage_over_time
+       where pronoun_gender = 'female' group by year
+    )
+  select year,
+         male.number_of_uses as male_usage_count,
+	 female.number_of_uses as female_usage_count,
+	 male.number_of_uses / (1.0 * female.number_of_uses) as male_to_female_ratio
+    from male
+    join female
+    using (year);    
+
+create view pronoun_behaviour as
+  select regr_slope(male_to_female_ratio, year) as trend_over_time
+   from pronoun_pivot_table;

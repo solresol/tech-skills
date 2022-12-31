@@ -119,12 +119,12 @@ for row in iterator:
             noun_chunks[str(chunk)] += 1
         for noun_chunk, ncount in noun_chunks.items():
             write_cursor.execute("insert into noun_chunks (sentence_id, noun_chunk, repeat_count) values (%s, %s, %s)", [sentence_id, str(noun_chunk), ncount])
-        prepositions = collections.defaultdict(int)
+        pronouns = collections.defaultdict(int)
         for word in sent:
             if word.tag_.startswith('PRP'):
-                prepositions[(str(word), word.tag_)] += 1
-        for prep, count in prepositions.items():
-            write_cursor.execute("insert into prepositions (sentence_id, preposition, tag, repeat_count) values (%s, %s, %s, %s)",
+                pronouns[(str(word), word.tag_)] += 1
+        for prep, count in pronouns.items():
+            write_cursor.execute("insert into pronouns (sentence_id, pronoun, tag, repeat_count) values (%s, %s, %s, %s)",
                                  [sentence_id, prep[0], prep[1], count])
     conn.commit()
     
