@@ -1,0 +1,10 @@
+# Now have to figure out common vs uncommon markers in the matrix
+e.g. table 206925 is almost definitely a skills matrix
+When I run
+./get_table.py --table-id 206928 --html
+
+I can see a lot of this:
+<img border="0" src="air3913351-def14a4x3x20.jpg"/>
+my guess is that this is the "yes" marker, and "nothing" is the "no marker"
+
+# But I think I might want to confirm the 
