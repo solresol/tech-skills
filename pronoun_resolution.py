@@ -125,7 +125,7 @@ for row in iterator:
         named_entity_cursor.execute("""
              select director_id, named_entity
                from named_entities
-               join directors_active_on_filing_date on (named_entity ilike '%%' || surname || '%%')
+               join directors_active_on_filing_date_materialized on (named_entity ilike '%%' || surname || '%%')
              where sentence_id = %s
                and label = 'PERSON'
                and cikcode = %s
