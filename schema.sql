@@ -325,17 +325,27 @@ create table sentences (
    document_position int not null,
    sentence_number_within_fragment int not null,
    sentence_text varchar not null,
-   foreign key (cikcode, accessionnumber, document_position) references document_text_positions(cikcode, accessionnumber, document_position)
+   foreign key (cikcode, accessionnumber, document_position) references document_text_positions(cikcode, accessionnumber, document_position),
 );
 create index on sentences using gin(sentence_text gin_trgm_ops);
+create unique index on sentences (cikcode, accessionNumber, document_position, sentence_number_within_fragment);
 
 
-create view sentences_within_document as
-  select cikcode, accessionNumber,
-	 rank() over (order by document_position, sentence_number_within_fragment)
-	    as sentence_number_within_document,
-	 sentence_id
-    from sentences;
+
+create table sentences_within_document (
+   sentence_id bigint primary key not null references sentences,
+   sentence_number_within_document int not null
+);
+
+
+create table sentence_numbered_filings (
+  cikcode int not null,
+  accessionNumber varchar not null,
+  when_parsed timestamp default current_timestamp,
+  number_of_sentences int,
+  primary key (cikcode, accessionNumber),
+  foreign key (cikcode, accessionNumber) references filings (cikcode, accessionNumber)
+ );
 
 
 create table named_entities (
@@ -363,125 +373,42 @@ create table pronouns (
 );
 create index on pronouns (upper(pronoun));
 
+create table pronoun_resolved_filings (
+   pronoun_resolved_filing_id bigserial primary key,
+   cikcode int not null,
+   accessionNumber varchar not null,
+   when_resolved timestamp default current_timestamp,
+   foreign key (cikcode, accessionNumber) references filings (cikcode, accessionNumber)
+);
 
-create view document_position_predecessors as
-  select cikcode,
-         accessionnumber,
-	 parent.document_position,
-         child.document_position as predecessor_document_position
-   from document_text_positions as parent
-   join document_text_positions as child
-   using (cikcode, accessionnumber)
-   where child.document_position >= parent.position_of_leader
-     and child.document_position <= parent.document_position;
-
-create view sentence_predecessors as
-  select parent.sentence_id,
-         child.sentence_id as predecessor_sentence
-    from sentences as parent
-    join document_text_positions as dtp_parent using (accessionnumber, cikcode, document_position)
-    join document_position_predecessors using (accessionnumber, cikcode, document_position)
-    join document_text_positions as dtp_child on
-          (document_position_predecessors.cikcode = dtp_child.cikcode and
-	  document_position_predecessors.accessionnumber = dtp_child.accessionnumber and
-	  document_position_predecessors.predecessor_document_position = dtp_child.document_position)
-    join sentences as child on (
-        dtp_child.accessionnumber = child.accessionnumber and
-	dtp_child.cikcode = child.cikcode and
-	dtp_child.document_position = child.document_position
-	)
-   where (
-          (child.document_position < parent.document_position) or
-	  (child.sentence_number_within_fragment <= parent.sentence_number_within_fragment)
-	  );
-	
-
-    
-create view director_sentence_references as
- select directors_active_on_filing_date.cikcode,
-        directors_active_on_filing_date.accessionnumber,
-        document_position,
-	sentence_number_within_fragment,
---	sentence_number_within_document,
-	sentence_id,
-	sentence_text,
-	named_entity,
-        director_id,
-	company_id,
-	director_name,
-	surname
-   from
-    directors_active_on_filing_date
-   join
-    document_text_positions using (cikcode, accessionnumber)
-   join
-     sentences using (cikcode, accessionnumber, document_position)
---   join 
---     sentences_within_document using (sentence_id)
-   join named_entities using (sentence_id)
-   where named_entity ilike '%' || surname || '%'
-     and label = 'PERSON';
+create table director_pronoun_resolution (
+   resolution_id bigserial primary key,
+   pronoun_sentence_id bigint not null references sentences,
+   pronoun varchar not null,
+   tag varchar not null,
+   named_entity_sentence_id bigint not null references sentences,
+   named_entity varchar not null,
+   label varchar not null,
+   director_id int not null, -- references individual_director_profile_details
+   filing_resolution_id bigint references pronoun_resolved_filings (pronoun_resolved_filing_id),
+   foreign key (pronoun_sentence_id, pronoun, tag) references pronouns (sentence_id, pronoun, tag),
+   foreign key (named_entity_sentence_id, named_entity, label) references named_entities (sentence_id, named_entity, label)
+);
 
 
--- create view pronoun_antecedents as 
---     select named_entities.sentence_id as predecessor_sentence,
---            sentence_predecessors.sentence_id as sentence_id,
--- 	   named_entity,
--- 	   s1.sentence_text as predecessor_text,
--- 	   s2.sentence_text as referrant_text,
--- 	   rank() over (partition by s2.cikcode, s2.accessionnumber order by s2.document_position desc, s2.sentence_number_within_fragment desc)
---       from named_entities
---       join sentence_predecessors on (named_entities.sentence_id = sentence_predecessors.predecessor_sentence)
---       join sentences as s1 on (named_entities.sentence_id = s1.sentence_id)
---       join  sentences as s2 on (sentence_predecessors.sentence_id = s2.sentence_id)
---       where label = 'PERSON';
+create view director_pronoun_resolution_verbose as
+  select pred.sentence_text as predecessor_sentence,
+	 pred_num.sentence_number_within_document as pred_sent_num,
+	 pron.sentence_text as pronoun_sentence,
+	 pron_num.sentence_number_within_document as pron_sent_num
+    from director_pronoun_resolution
+    join sentences as pred on (named_entity_sentence_id = pred.sentence_id)
+    join sentences as pron on (pronoun_sentence_id = pron.sentence_id)
+    left join sentences_within_document as pred_num on (pred_num.sentence_id = pred.sentence_id)
+    left join sentences_within_document as pron_num on (pron_num.sentence_id = pron.sentence_id);
 
 
 
-create view pronoun_antecedents as 
-    select named_entities.sentence_id as predecessor_sentence,
-           sentence_predecessors.sentence_id as sentence_id,
-	   named_entity
-      from named_entities
-      join sentence_predecessors on (named_entities.sentence_id = sentence_predecessors.predecessor_sentence)
-      where label = 'PERSON';
-      
-      --and sentence_predecessors.sentence_id = 52832;
-
-create view pronoun_antecedent_horrifically_slow as
- with unfiltered_antecedents as (
-  select pronouns.sentence_id,
-         sentence_predecessors.predecessor_sentence,
-         pronoun,
-	 tag,
-	 named_entity,
-	 company_id,
-	 director_id,
-	 director_name,
-	 surname,
-	 s1.sentence_text as sentence_text,
-	 s2.sentence_text as predecessor_text,
-	 rank() over (partition by s2.cikcode, s2.accessionnumber order by s2.document_position desc, s2.sentence_number_within_fragment desc) as reference_distance
-   from pronouns
-   join sentences s1 using (sentence_id)
-   join sentence_predecessors using (sentence_id)
-   join sentences s2 on (sentence_predecessors.predecessor_sentence = s2.sentence_id)
-   join director_sentence_references on (director_sentence_references.sentence_id = sentence_predecessors.predecessor_sentence)
- ) select * from unfiltered_antecedents where reference_distance = 1;
-
-
--- ,
---    has_single_director_mention boolean not null,
---    has_pronoun_mention boolean not null,
---    coreference_sentence bigint references sentences(sentence_id),
---    director_id int,
---    director_name varchar,
-
--- );
-
-
-
-   
 ----------------------------------------------------------------------
 
 create table keywords_to_search_for (
@@ -520,17 +447,17 @@ create view sentences_mentioning_keywords as
   select sentence_id, sentence_text, keyword
     from sentences, keywords_to_search_for
      where sentence_text ilike '%' || keyword || '%';
-     
+
 
 ----------------------------------------------------------------------
 -- Funny stuff
 
-create materialized view pronoun_usage_over_time as 
+create materialized view pronoun_usage_over_time as
 select upper(pronoun) as pronoun,
        extract(year from filingdate) as year,
        case
-        when upper(pronoun) in ('HE', 'HIM', 'HIS', 'HIMSELF') then 'male'
-        when upper(pronoun) in ('SHE', 'HER', 'HERSELF') then 'female'
+	when upper(pronoun) in ('HE', 'HIM', 'HIS', 'HIMSELF') then 'male'
+	when upper(pronoun) in ('SHE', 'HER', 'HERSELF') then 'female'
 	else null
        end as pronoun_gender,
        count(*) as number_of_uses
@@ -550,12 +477,12 @@ create view pronoun_pivot_table as
        where pronoun_gender = 'female' group by year
     )
   select year,
-         male.number_of_uses as male_usage_count,
+	 male.number_of_uses as male_usage_count,
 	 female.number_of_uses as female_usage_count,
 	 male.number_of_uses / (1.0 * female.number_of_uses) as male_to_female_ratio
     from male
     join female
-    using (year);    
+    using (year);
 
 create view pronoun_behaviour as
   select regr_slope(male_to_female_ratio, year) as trend_over_time
