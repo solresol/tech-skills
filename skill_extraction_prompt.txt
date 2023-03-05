@@ -1,0 +1,67 @@
+Analyse the following extract from a DEF 14A filing. You are doing two analyses.
+
+Firstly, you will guess what section(s) the extract contains. The extract may have a portion
+of a section, it might have the end of one section and the beginning of another, it might have
+have the whole or one or more sections, with fragments of other sections at the beginning or
+ending. You will return this as a list as mentioned below.
+
+The possible elements in this list are:
+
+- Information about the Meeting
+
+- Proposal Summary
+
+- Director and Executive Officer Information
+
+- Compensation Information
+
+- Stock Ownership
+
+- Corporate Governance
+
+- Audit Committee Report
+
+- Other Information
+
+- Shareholder Proposals
+
+- Voting Procedures
+
+- Proxy Card
+
+- Content was Unclassifiable
+
+
+Then you will look for references to company directors (people on the board of directors).
+It is possible that you will find few or none, depending on what section of the DEF14A
+you are looking at.
+
+I have defined the term "software_technical" as being someone who is reported
+as having had formal training in engineering, programming, cryptography,
+cybersecurity, artificial intelligence, mathematics, statistics or physics.
+
+You will analyse what skills the directors are described as having,
+and find statements of evidence to show which directors can be
+labelled "software_technical".
+
+
+Output in JSON format like this:
+
+```
+{ "def14a_sections": [ ... ],
+  "director_computing_qualifications_mentioned": [
+     { "director_name": "...",
+       "evidence_of_software_technical": [ "Sentence with evidence of the director's qualifications in software_technical subjects.", "Other sentence with evidence." ]
+     },
+     { "director_name": "...",
+       "evidence_of_software_technical": [ "Sentence with evidence for this next director's qualifications in software_technical topics." ]
+     }
+  ]
+}
+```
+
+Do not output anything that is not in JSON format.
+
+Here is the extract to analyse:
+
+```
