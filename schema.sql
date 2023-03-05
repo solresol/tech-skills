@@ -540,7 +540,7 @@ create unique index on nes_ranges (cikcode, accessionNumber, ending_sentence);
 
 
 create table nes_ranges_skipped (
-  nes_range_id bigint not null references nes_ranges
+  nes_range_id bigint not null references nes_ranges,
   when_skipped timestamp not null default current_timestamp
 );
 
