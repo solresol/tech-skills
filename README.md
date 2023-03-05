@@ -119,6 +119,16 @@ From here on is the GPT-based approach.
 You probably want to run `echo $PROMPT_ID` to see what it was. (It should be 1)
 
 
+23. `naive_sentences.py`
+
+It's nice if you run it in a loop with --progress --stop-after 1000
+
+
+24. Populate `vocabulary_required_for_prompt`. You'll use the prompt_ID from
+step 22 and vocabulary that would have to be in the relevant sections to be
+worth bothering with. (We only do this to save the number of OpenAI API calls
+we make, because otherwise it becomes expensive).
+
 ----------------------------------------------------------------------
 
 
