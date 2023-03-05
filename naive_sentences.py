@@ -67,6 +67,7 @@ from filings
 join html_doc_cache on (url = document_storage_url)
 left join naively_extracted_sentences using (cikcode, accessionnumber)
 where naively_extracted_sentences.cikcode is null
+  and content_type = 'text/html'
 """ + constraints + " order by cikcode, accessionnumber"
 
 if args.stop_after is not None:
