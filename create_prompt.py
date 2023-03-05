@@ -25,6 +25,7 @@ prefix_contents = open(args.prefix_file).read()
 
 query = "insert into prompts (prompt_prefix) values (%s) returning prompt_id"
 write_cursor.execute(query, [prefix_contents])
+conn.commit()
 
 row = write_cursor.fetchone()
 if row is None:
