@@ -487,3 +487,60 @@ create view pronoun_pivot_table as
 create view pronoun_behaviour as
   select regr_slope(male_to_female_ratio, year) as trend_over_time
    from pronoun_pivot_table;
+
+----------------------------------------------------------------------
+
+create table prompts (
+  prompt_id bigserial primary key,
+  model varchar not null default 'gpt-3.5-turbo',
+  prompt_prefix varchar not null,
+  prompt_postfix varchar not null default '```',
+  creation_date timestamp default current_timestamp
+);
+
+-- Don't bother using prompt X unless you see one of these
+-- words in the text.
+create table vocabulary_required_for_prompt (
+  prompt_id bigint references prompts,
+  vocab_item varchar,
+  primary key (prompt_id, vocab_item)
+);
+
+create table naively_extracted_sentences (
+  cikcode int not null,
+  accessionNumber varchar not null,
+  position_in_document int not null,
+  word_count int not null,
+  text varchar not null,
+  foreign key (cikcode, accessionnumber) references filings(cikcode, accessionnumber),
+  primary key (cikcode, accessionnumber, position_in_document)
+);
+create index on naively_extracted_sentences using gin(text gin_trgm_ops);
+
+
+-- Because we are using GPT-3.5, it only has 8k token memory. We can't give it a whole
+-- filing. We have to break it into chunks and process each chunk separately.
+create table nes_ranges (
+  nes_range_id bigserial not null primary key,
+  cikcode int not null,
+  accessionNumber varchar not null,
+  starting_sentence int not null,
+  ending_sentence int not null,
+  foreign key (cikcode, accessionnumber, starting_sentence)
+     references naively_extracted_sentences (cikcode, accessionnumber, position_in_document),
+  foreign key (cikcode, accessionnumber, ending_sentence)
+     references naively_extracted_sentences (cikcode, accessionnumber, position_in_document)
+);
+create unique index on nes_ranges (cikcode, accessionNumber, starting_sentence, ending_sentence);
+
+
+
+
+create table gpt_responses (
+  nes_range_id bigint not null references nes_ranges,
+  prompt_id bigint not null references prompts,
+  reply varchar not null,
+  primary key (nes_range_id, prompt_id)
+);
+
+  

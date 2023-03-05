@@ -57,6 +57,12 @@ done
 ```
 
 
+----------------------------------------------------------------------
+
+The next steps are from a not-very successful attempt to build my own
+extraction technology. They are probably safe to ignore.
+
+
 11. Run `extract_tables.py`
 
 12. Run `table_director_affinity.py`
@@ -103,6 +109,18 @@ What I need to do next:
 - Extract summary sentences and see what skills they have.
 
 ----------------------------------------------------------------------
+
+From here on is the GPT-based approach.
+
+22. (Run this once only; it's not idempotent)
+
+  `PROMPT_ID=$(create_prompt.py --prefix-file skill_extraction_prompt.txt)`
+
+You probably want to run `echo $PROMPT_ID` to see what it was. (It should be 1)
+
+
+----------------------------------------------------------------------
+
 
 (Maybe also...)
 - https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip
