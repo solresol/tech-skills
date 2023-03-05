@@ -129,6 +129,8 @@ step 22 and vocabulary that would have to be in the relevant sections to be
 worth bothering with. (We only do this to save the number of OpenAI API calls
 we make, because otherwise it becomes expensive).
 
+25. Run `ask_openai_batch.py --prompt $PROMPT_ID`
+
 ----------------------------------------------------------------------
 
 
