@@ -189,3 +189,5 @@ create materialized view directors_active_on_filing_date_materialized as
    join individual_director_profile_details using (director_id)
   where (role_start_date < filingDate or role_start_date is null)
     and (role_end_date > filingDate or role_end_date is null);
+
+create index on directors_active_on_filing_date_materialized(cikcode, accessionnumber);
