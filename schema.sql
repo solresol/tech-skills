@@ -511,7 +511,7 @@ create table naively_extracted_sentences (
   accessionNumber varchar not null,
   position_in_document int not null,
   word_count int not null,
-  text varchar not null,
+  sentence_text varchar not null,
   foreign key (cikcode, accessionnumber) references filings(cikcode, accessionnumber),
   primary key (cikcode, accessionnumber, position_in_document)
 );
