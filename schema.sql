@@ -506,6 +506,7 @@ create table vocabulary_required_for_prompt (
   primary key (prompt_id, vocab_item)
 );
 
+
 create table naively_extracted_sentences (
   cikcode int not null,
   accessionNumber varchar not null,
@@ -515,7 +516,7 @@ create table naively_extracted_sentences (
   foreign key (cikcode, accessionnumber) references filings(cikcode, accessionnumber),
   primary key (cikcode, accessionnumber, position_in_document)
 );
-create index on naively_extracted_sentences using gin(text gin_trgm_ops);
+create index on naively_extracted_sentences using gin(sentence_text gin_trgm_ops);
 
 
 -- Because we are using GPT-3.5, it only has 8k token memory. We can't give it a whole
@@ -532,6 +533,10 @@ create table nes_ranges (
      references naively_extracted_sentences (cikcode, accessionnumber, position_in_document)
 );
 create unique index on nes_ranges (cikcode, accessionNumber, starting_sentence, ending_sentence);
+-- we should never have to ranges starting at the same place
+create unique index on nes_ranges (cikcode, accessionNumber, starting_sentence);
+-- Nor finishing at the same place.
+create unique index on nes_ranges (cikcode, accessionNumber, ending_sentence);
 
 
 
