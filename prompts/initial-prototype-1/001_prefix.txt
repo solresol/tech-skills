@@ -32,7 +32,8 @@ The possible elements in this list are:
 - Content was Unclassifiable
 
 
-Then you will look for references to company directors (people on the board of directors).
+Then you will look for references to the training and experience of
+company directors (people on the board of directors).
 It is possible that you will find few or none, depending on what section of the DEF14A
 you are looking at.
 

@@ -491,17 +491,26 @@ create view pronoun_behaviour as
 ----------------------------------------------------------------------
 
 create table prompts (
-  prompt_id bigserial primary key,
+  prompt_id varchar primary key,
   model varchar not null default 'gpt-3.5-turbo',
-  prompt_prefix varchar not null,
-  prompt_postfix varchar not null default '```',
-  creation_date timestamp default current_timestamp
+  creation_date timestamp default current_timestamp,
+);
+
+create table prompt_sections (
+  prompt_id varchar not null references prompts,
+  section_number int not null,
+  insert_raw_text bool not null default false check ((not insert_raw_text) or (not insert_company_name and not insert_directors)) ,
+  raw_text varchar,
+  insert_company_name bool not null default false check ((not insert_company_name) or (not insert_raw_text and not insert_directors)),
+  insert_directors bool not null default false check ((not insert_directors) or (not insert_raw_text and not insert_company_name)),
+  insert_document bool not null default false check ((not insert_report_text) or (not insert_raw_text and not insert_company_name and not insert_directors)),
+  primary key (prompt_id, section_number)
 );
 
 -- Don't bother using prompt X unless you see one of these
 -- words in the text.
 create table vocabulary_required_for_prompt (
-  prompt_id bigint references prompts,
+  prompt_id varchar references prompts,
   vocab_item varchar,
   primary key (prompt_id, vocab_item)
 );
@@ -546,10 +555,8 @@ create table nes_ranges_skipped (
 
 create table gpt_responses (
   nes_range_id bigint not null references nes_ranges,
-  prompt_id bigint not null references prompts,
+  prompt_id varchar not null references prompts,
   reply varchar not null,
   when_queried timestamp not null default current_timestamp,
   primary key (nes_range_id, prompt_id)
 );
-
-  
