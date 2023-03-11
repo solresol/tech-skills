@@ -25,7 +25,7 @@ parser.add_argument("--overlap",
                     type=float,
                     help="How many sentences to overlap between nes_ranges")
 parser.add_argument("--max-words-per-nes-range",
-                    default=1000,
+                    default=600,
                     type=int,
                     help="GPT-3.5 has only 8k token memory for instance.")
 args = parser.parse_args()
