@@ -44,7 +44,7 @@ import nltk
 from bs4 import BeautifulSoup
 import os
 import openai
-
+import promptconstruction
 
 if args.verbose:
     logging.basicConfig(
@@ -58,15 +58,13 @@ conn = pgconnect.connect(args.database_config)
 read_cursor = conn.cursor()
 sentence_cursor = conn.cursor()
 write_cursor = conn.cursor()
+prompt_cursor = conn.cursor()
 
-read_cursor.execute("select model, prompt_prefix, prompt_postfix from prompts where prompt_id = %s",
-                    [args.prompt_id])
-row = read_cursor.fetchone()
+prompt_cursor.execute("select model from prompts where prompt_id = %s", [args.prompt_id])
+row = prompt_cursor.fetchone()
 if row is None:
     sys.exit(f"Prompt ID = {args.prompt_id} not found")
 model = row[0]
-prompt_prefix = row[1]
-prompt_postfix = row[2]
 logging.info("Prompt fetched")
 
 openai.api_key = open(os.path.expanduser(args.openai_key_file)).read().strip()
@@ -145,7 +143,33 @@ for row in iterator:
                              cikcode,
                              accession_number])
     text = "\n".join([x[0] for x in sentence_cursor])
-    prompt = prompt_prefix + text + prompt_postfix
+
+    sentence_cursor.execute("select board_name from listed_company_details where cikcode = %s",
+                            [cikcode])
+    name_row = sentence_cursor.fetchone()
+    if name_row is None:
+        logging.warning(f"{cikcode} doesn't appear in listed_company_details")
+        company_name = None
+    else:
+        company_name = name_row[0]
+
+    sentence_cursor.execute("select director_name, forename1, surname, director_id from directors_active_on_filing_date where cikcode = %s and accessionnumber = %s",
+                            [cikcode, accession_number])
+    directors = []
+    for director_row in sentence_cursor:
+        director_name, forename1, surname, director_id = director_row
+        if director_name != f"{forename1} {surname}":
+            directors.append(f"[{director_id}] {director_name} ({forename1} {surname})")
+        else:
+            directors.append(f"[{director_id}] {director_name}")
+    director_names = "\n - ".join(directors)
+    if director_names != "":
+        director_names = " - " + director_names + "\n"
+
+    prompt = promptconstruction.make_prompt(prompt_cursor, args.prompt_id,
+                                            director_names=director_names,
+                                            company_name=company_name,
+                                            document=text)
     logging.info("Querying OpenAI")
     if args.show_prompt:
         print("PROMPT>>", prompt)
