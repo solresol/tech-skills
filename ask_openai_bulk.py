@@ -27,12 +27,13 @@ parser.add_argument("--starting-sentence",
                     type=int,
                     help="Only process the NES range starting with this sentence number (needs cikcode and acession number to make sense")
 parser.add_argument("--prompt-id",
-                    type=int,
                     required=True,
                     help="Use this prompt_id (probably from create_prompt.py)")
 parser.add_argument("--openai-key-file",
                     default="~/.openai.key")
-
+parser.add_argument("--show-prompt", action="store_true", help="Display the prompts that are sent to OpenAI")
+parser.add_argument("--show-response", action="store_true", help="Display the response returned by OpenAI")
+parser.add_argument("--dry-run", action="store_true", help="Don't send anything to OpenAI")
 
 args = parser.parse_args()
 
@@ -146,6 +147,10 @@ for row in iterator:
     text = "\n".join([x[0] for x in sentence_cursor])
     prompt = prompt_prefix + text + prompt_postfix
     logging.info("Querying OpenAI")
+    if args.show_prompt:
+        print("PROMPT>>", prompt)
+    if args.dry_run:
+        continue
     response = openai.ChatCompletion.create(
       model=model,
       messages=[
@@ -161,4 +166,6 @@ for row in iterator:
                               reply_text
                               ]
                          )
+    if args.show_response:
+        print("REPLY>>",reply_text)
     conn.commit()
