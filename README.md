@@ -114,7 +114,7 @@ From here on is the GPT-based approach.
 
 22. (Run this once only; it's not idempotent)
 
-  `prompts/initial-prototype-1/setup.sh`
+  `prompts/generation2/setup.sh`
 
 23. `naive_sentences.py`
 
@@ -126,7 +126,7 @@ step 22 and vocabulary that would have to be in the relevant sections to be
 worth bothering with. (We only do this to save the number of OpenAI API calls
 we make, because otherwise it becomes expensive).
 
-25. Run `ask_openai_batch.py --prompt initial-prototype-1`
+25. Run `ask_openai_batch.py --prompt generation2`
 (Currently broken.)
 
 ----------------------------------------------------------------------
