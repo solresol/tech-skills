@@ -182,12 +182,20 @@ for row in iterator:
       ]
     )
     reply_text = response['choices'][0]['message']['content']
+    finish_reason = response['choices'][0]['finish_reason']
+    prompt_tokens = response['usage']['prompt_tokens']
+    completion_tokens = response['usage']['completion_tokens']
+    total_tokens = response['usage']['total_tokens']
     logging.info("Received content")
-    
-    write_cursor.execute("insert into gpt_responses (nes_range_id, prompt_id, reply) values (%s, %s, %s)",
+
+    write_cursor.execute("insert into gpt_responses (nes_range_id, prompt_id, reply, finish_reason, prompt_tokens, completion_tokens, total_tokens) values (%s, %s, %s, %s, %s, %s, %s)",
                              [nes_range_id,
                               args.prompt_id,
-                              reply_text
+                              reply_text,
+                              finish_reason,
+                              prompt_tokens,
+                              completion_tokens,
+                              total_tokens
                               ]
                          )
     if args.show_response:
