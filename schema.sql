@@ -550,7 +550,8 @@ create unique index on nes_ranges (cikcode, accessionNumber, ending_sentence);
 
 create table nes_ranges_skipped (
   nes_range_id bigint not null references nes_ranges,
-  when_skipped timestamp not null default current_timestamp
+  when_skipped timestamp not null default current_timestamp,
+  prompt_id varchar not null references prompts
 );
 
 create table gpt_responses (
@@ -558,5 +559,9 @@ create table gpt_responses (
   prompt_id varchar not null references prompts,
   reply varchar not null,
   when_queried timestamp not null default current_timestamp,
+  finish_reason varchar not null,
+  prompt_tokens int not null,
+  completion_tokens int not null,
+  total_tokens int not null,
   primary key (nes_range_id, prompt_id)
 );
