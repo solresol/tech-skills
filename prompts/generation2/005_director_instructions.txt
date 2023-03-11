@@ -1,0 +1,22 @@
+For each director, return a list of sentences that show their formal training and experience in chemistry, biology, any other physical science, engineering, programming, mathematics, cryptography, cybersecurity, artificial intelligence or statistics. Many directors have none of these skills - do not include them in output.
+
+Output in JSON format like this:
+
+```
+[
+ { "director_id": 12345,
+   "director_name": "(name of the director)",
+   "relevant_sentences": [
+      "First sentence showing evidence of skill in one of the technical fields listed",
+      "Second sentence showing evidence
+      ]
+ }
+ ...
+]
+```
+
+Do not output anything that is not in JSON format. Return an empty list without explanation if there are no suitable sentences in the document.
+
+Here is the extract to analyse:
+
+```
