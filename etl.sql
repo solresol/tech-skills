@@ -65,6 +65,8 @@ create materialized view board_transition_dates as
 
 create unique index on board_transition_dates(company_id, company_transition_event_number);
 
+
+
 create materialized view board_composition as
  select board_composition_parsed.company_id, director_id,
 	role_start_date,
@@ -77,7 +79,9 @@ create materialized view board_composition as
 	    commence.transition_date = board_composition_parsed.role_start_date)
   left join board_transition_dates as finish
 	on (finish.company_id = board_composition_parsed.company_id and
-	    finish.transition_date = board_composition_parsed.role_end_date);
+	    finish.transition_date = board_composition_parsed.role_end_date)
+  where seniority != 'Senior Manager'
+	    ;
 
 create index on board_composition (company_id);
 create index on board_composition (director_id);
