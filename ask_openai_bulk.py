@@ -184,7 +184,15 @@ for row in iterator:
         # maybe I should also set presence_penalty to -2 to make it only re-use existing tokens
     )
     reply_text = response['choices'][0]['message']['content']
+    if args.show_response:
+        print("REPLY>>",reply_text)
     finish_reason = response['choices'][0]['finish_reason']
+    if args.show_response and finish_reason != 'stop':
+        print("... continuation required because of",finish_reason)
+    if finish_reason is None:
+        finish_reason = "reason missing"
+        if args.show_response:
+            print("... other content =",str(response['choices']))
     prompt_tokens = response['usage']['prompt_tokens']
     completion_tokens = response['usage']['completion_tokens']
     total_tokens = response['usage']['total_tokens']
@@ -200,6 +208,4 @@ for row in iterator:
                               total_tokens
                               ]
                          )
-    if args.show_response:
-        print("REPLY>>",reply_text)
     conn.commit()
