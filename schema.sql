@@ -555,6 +555,7 @@ create table nes_ranges_skipped (
   primary key (nes_range_id, prompt_id)
 );
 
+
 create table gpt_responses (
   nes_range_id bigint not null references nes_ranges,
   prompt_id varchar not null references prompts,
@@ -566,3 +567,56 @@ create table gpt_responses (
   total_tokens int not null,
   primary key (nes_range_id, prompt_id)
 );
+
+
+create materialized view gpt_query_sizes as
+ with words as (
+  select nes_range_id,
+	 ending_sentence - starting_sentence + 1 as number_of_sentences,
+	 sum(word_count) as word_count
+    from nes_ranges
+    join naively_extracted_sentences
+	  on (nes_ranges.cikcode = naively_extracted_sentences.cikcode
+	      and nes_ranges.accessionNumber = naively_extracted_sentences.accessionNumber
+	      and position_in_document >= starting_sentence
+	      and position_in_document <= ending_sentence)
+  group by 1,2
+  ), director_counts as (
+    select nes_range_id,
+	 count(distinct director_id) as number_of_directors
+    from nes_ranges
+    join directors_active_on_filing_date
+	  on (nes_ranges.cikcode = directors_active_on_filing_date.cikcode
+	      and nes_ranges.accessionnumber = directors_active_on_filing_date.accessionnumber)
+   group by 1
+  )
+  select nes_range_id, number_of_sentences, word_count, number_of_directors from
+     words join director_counts using (nes_range_id);
+
+
+create table experience_sentences (
+  director_id int not null, --- which I could make this reference some primary table
+  sentence varchar not null,
+  nes_range_id bigint not null references nes_ranges,
+  prompt_id varchar not null references prompts,
+  when_extracted timestamp not null default current_timestamp,
+  foreign key (nes_range_id, prompt_id) references gpt_responses (nes_range_id, prompt_id)
+);
+create index on experience_sentences (director_id);
+
+
+create table unparseable_gpt_responses (
+  nes_range_id bigint not null references nes_ranges,
+  prompt_id varchar not null references prompts,
+  when_failed timestamp not null default current_timestamp,
+  foreign key (nes_range_id, prompt_id) references gpt_responses (nes_range_id, prompt_id)
+);
+create unique index on unparseable_gpt_responses(nes_range_id, prompt_id);
+
+create table content_free_gpt_responses (
+  nes_range_id bigint not null references nes_ranges,
+  prompt_id varchar not null references prompts,
+  when_checked timestamp not null default current_timestamp,
+  foreign key (nes_range_id, prompt_id) references gpt_responses (nes_range_id, prompt_id)
+);
+create unique index on content_free_gpt_responses(nes_range_id, prompt_id);
