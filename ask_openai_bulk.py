@@ -176,10 +176,12 @@ for row in iterator:
     if args.dry_run:
         continue
     response = openai.ChatCompletion.create(
-      model=model,
-      messages=[
-          {"role": "user", "content": prompt }
-      ]
+        model=model,
+        messages=[
+            {"role": "user", "content": prompt }
+        ],
+        temperature=0
+        # maybe I should also set presence_penalty to -2 to make it only re-use existing tokens
     )
     reply_text = response['choices'][0]['message']['content']
     finish_reason = response['choices'][0]['finish_reason']
