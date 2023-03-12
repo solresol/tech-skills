@@ -153,7 +153,7 @@ for row in iterator:
     else:
         company_name = name_row[0]
 
-    sentence_cursor.execute("select director_name, forename1, surname, director_id from directors_active_on_filing_date where cikcode = %s and accessionnumber = %s",
+    sentence_cursor.execute("select director_name, forename1, surname, director_id from directors_active_on_filing_date_materialized where cikcode = %s and accessionnumber = %s",
                             [cikcode, accession_number])
     directors = []
     for director_row in sentence_cursor:
