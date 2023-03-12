@@ -132,7 +132,7 @@ for row in iterator:
 
     if count == 0:
         logging.info("No vocabulary items were present, so this can't possibly be relevant to our project")
-        write_cursor.execute("insert into nes_ranges_skipped (nes_range_id, prompt_id) values (%s)",
+        write_cursor.execute("insert into nes_ranges_skipped (nes_range_id, prompt_id) values (%s, %s)",
                              [nes_range_id, args.prompt_id])
         conn.commit()
         continue
