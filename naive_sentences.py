@@ -112,6 +112,8 @@ for row in iterator:
         total_tokens_so_far = sum(sentence_lengths[nes_range_start:])
         if total_tokens_so_far >= args.max_words_per_nes_range:
             nes_end_range = i - 1
+            if nes_end_range < nes_range_start:
+                nes_end_range = nes_range_start
             logging.info(f"Creating a range from sentences {nes_range_start} to {nes_end_range}")
             saved_ranges.update([(nes_range_start, nes_end_range)])
             
