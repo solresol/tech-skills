@@ -25,12 +25,6 @@ run `psql` commands without extra complications.
 This probably could be automated. Edgar seems to check the user agent.
 
 
-6. Run `virtualenv .venv` (or whatever equivalent you do to create a virtual python
-environment on your operating system)
-
-7. Run `. .venv/bin/activate` (or whatever equivalent is on your operating system).
-Feel free to submit a patch here if you are on Windows and you get this working.
-
 8. Create a `db.conf` file with the connection details for your postgresql database.
 It should look like:
 
@@ -43,7 +37,7 @@ port=5432
 dbname=tech-skills
 ```
 
-9. Run `load_listed_company_submissions.py`
+9. Run `uv run load_listed_company_submissions.py --progress`
 
 
 10. Run `fetch_forms_from_edgar.py` and `fetch_forms_from_edgar.py --year` _10 years ago_
