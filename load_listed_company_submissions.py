@@ -143,3 +143,5 @@ for entry in iterator:
         #+ [cikcode, json_data['filings']['recent']['accessionNumber'][i]]
         write_cursor.execute(insertion_query, insert_data + update_data)
     conn.commit()
+
+write_cursor('refresh materialized view cik2ticker')
