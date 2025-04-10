@@ -56,7 +56,7 @@ done
 ```
 
 
-11. Run `uv run ask_openai_batch.py --stop-at 100`
+11. Run `uv run ask_openai_batch.py --stop-after 100`
 
 I haven't figured out how to make sure the batches aren't too big or too small. I'm just
 winging it by finding a number that seems reasonable.
@@ -64,6 +64,9 @@ winging it by finding a number that seems reasonable.
 That should probably be in a cron job.
 
 12. See how the batches are going with `uv run batchcheck.py`
+
+
+13. Download with `uv run batchfetch.py --report-costs`
 
 ----------------------------------------------------------------------
 
