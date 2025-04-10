@@ -129,7 +129,6 @@ create table html_doc_cache (
   date_fetch timestamp default current_timestamp
 );
 
-
 create table html_fetch_failures (
   url varchar primary key,
   status_code int,
@@ -157,3 +156,53 @@ create index on director_extractions(batch_id);
         number_completed int, 
         number_failed int
 );
+
+create table if not exists director_extraction_raw (
+       cikcode int not null,
+       accessionNumber varchar not null,
+       response jsonb not null,
+       prompt_tokens int,
+       completion_tokens int,
+       foreign key (cikcode, accessionnumber) references filings(cikcode, accessionnumber),
+       primary key (cikcode, accessionnumber)
+);
+
+
+create materialized view director_mentions as SELECT
+    cikcode,
+    accessionnumber,
+    upper(director->>'name') AS director_name,
+    (director->>'software_background')::BOOLEAN AS software_background,
+    director->>'reason' AS reason,
+    director->>'source_excerpt' AS source_excerpt
+FROM director_extraction_raw,
+     jsonb_array_elements(response->'directors') AS director;
+
+
+-- create materialized view cik2ticker as select
+--    cast(submission->>'cik' as int) as cikcode,
+--    submission->>'name' as company_name,
+--    tickers.value #>> '{}' as ticker
+-- FROM submissions_raw,
+--    jsonb_array_elements(submission->'tickers') as tickers;
+
+create view cik2name as select
+   distinct cast(submission->>'cik' as int) as cikcode,
+   submission->>'name' as company_name
+FROM submissions_raw;
+
+create view company_directorships as select
+  company_name,
+  cik2name.cikcode,
+  director_name,
+  bool_or(software_background) as software_background,
+  min(filingDate) as start_date,
+  max(filingDate) as end_date
+from filings join cik2name using(cikcode)
+     join director_mentions using(accessionnumber)
+ group by company_name, cik2name.cikcode, director_name;
+
+
+
+--create view
+--  extract('year' from filingDate)
