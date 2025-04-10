@@ -49,7 +49,11 @@ if args.verbose:
 if args.batch_file is None:
     tf = tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.jsonl')
     args.batch_file = tf.name
-    tf.close()    
+    tf.close()
+else:
+    with open(args.batch_file, 'w') as f:
+        # reset it to zero
+        f.write('')
 
 conn = pgconnect.connect(args.database_config)
 read_cursor = conn.cursor()
@@ -159,6 +163,21 @@ for cikcode, accession_number, content, encoding, content_type, url in iterator:
     for tag in soup.find_all(True):
         tag.attrs = {}
 
+    for tag in soup.find_all('font'):
+        tag.unwrap()
+
+    for tag in soup.find_all('a'):
+        tag.unwrap()        
+
+    text_version = str(soup)
+    for tail_tag in ['</td>', '</tr>', '</li>', '</p>']:
+        text_version = text_version.replace(tail_tag, '')
+    while True:
+        space_reduction = text_version.replace('\n\n', '\n')
+        if space_reduction == text_version:
+            break
+        text_version = space_reduction
+
     system_prompt = """Extract the names of all directors listed in this DEF 14A filing, and identify if they have any software-related or adjacent technical skills. Examples of relevant skills include: experience as a programmer, CTO, CIO, software engineer, cybersecurity specialist, or having degrees in computer science, software engineering, mathematics, or similar technical qualifications. 
 
 For each director, clearly state:
@@ -174,7 +193,7 @@ For each director, clearly state:
         "url": "/v1/chat/completions",
         "body": {
             "model": "gpt-4o-mini",
-            "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": str(soup)}],
+            "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
             "temperature": 0,
             "tools": tools,
             "tool_choice": {"type": "function", "function": {"name": "show_directors"}}
