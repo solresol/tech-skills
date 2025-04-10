@@ -1,5 +1,7 @@
 create extension if not exists pg_trgm;
 
+-- Currently not using these
+
 create table board_composition_raw (
        CompanyID varchar,
        DirectorID varchar,
@@ -127,24 +129,31 @@ create table html_doc_cache (
   date_fetch timestamp default current_timestamp
 );
 
+
 create table html_fetch_failures (
   url varchar primary key,
   status_code int,
   date_attempted  timestamp default current_timestamp
 );
 
-
-
--- Doesn't look like I actually created this table
-create table edgar_def14a_raw (
-  edgar_raw_ref serial primary key,
-  cikcode varchar,
-  accessionNumber varchar,
-  primaryDocument varchar,
-  reportDate varchar,
-  document text
+create table if not exists director_extract_batches (
+       id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       openai_batch_id text,
+       when_created timestamp default current_timestamp,
+       when_sent timestamp,
+       when_retrieved timestamp
 );
-create index on edgar_def14a_raw(cikcode);
-create index on edgar_def14a_raw(cikcode, reportDate);
-create index on edgar_def14a_raw(reportDate);
 
+create table if not exists director_extractions (
+       url varchar unique references html_doc_cache(url),
+       batch_id int references director_extract_batches(id)
+);
+create index on director_extractions(batch_id);
+
+
+ create table if not exists batchprogress (
+        batch_id int references director_extract_batches(id), 
+        when_checked timestamp default current_timestamp, 
+        number_completed int, 
+        number_failed int
+);
