@@ -8,6 +8,7 @@ run `psql` commands without extra complications.
 
 2. Run `psql -f schema.sql`
 
+[PREVIOUSLY I DID THIS... BUT NOW I THINK I NEED TO BUILD A BOARDEX EQUIVALENT TO BE UP-TO-DATE]
 3. Download from BoardEx and put them into the `data/usa/` folder:
 
 - `board-composition.csv`
@@ -16,6 +17,7 @@ run `psql` commands without extra complications.
 
 (One day I should automate this, but I'm not sure if BoardEx allows it)
 
+[LIKEWISE, I DON'T RUN THIS ANY MORE]
 4. Run `psql -f etl.sql`
 
 5. Download and put this into `data/usa/`
@@ -30,11 +32,14 @@ It should look like:
 
 ```
 [database]
-username=foo
+user=foo
 password=hunter2
 hostname=mydb-server
 port=5432
 dbname=tech-skills
+
+[edgar]
+useragent="Greg Smith greg@example.com"
 ```
 
 9. Run `uv run load_listed_company_submissions.py --progress`
@@ -51,77 +56,14 @@ done
 ```
 
 
-----------------------------------------------------------------------
+11. Run `uv run ask_openai_batch.py --stop-at 100`
 
-The next steps are from a not-very successful attempt to build my own
-extraction technology. They are probably safe to ignore.
+I haven't figured out how to make sure the batches aren't too big or too small. I'm just
+winging it by finding a number that seems reasonable.
 
+That should probably be in a cron job.
 
-11. Run `extract_tables.py`
-
-12. Run `table_director_affinity.py`
-
-13. Run `table_deep_analysis.py`
-
-14. Run `every_textual.py`
-
-This will take about a day to run, and it is likely to have many errors and
-need to be restarted after it fails. Check the table `filings_with_textual_parse_errors`
-to see what it has died on.
-
-15. Review the content of `keywords_to_search_for`
-
-16. Run `refresh materialized view director_mentions;`
-Maybe with some clever indexing, I could get this to be able to be refreshed concurrently.
-
-17. Run `python -m spacy download en_core_web_sm`
-
-18. Run `grammar_parse.py`
-
-This will take about 2 months to run, and might take an extremely long time to start.
-
-If you have a lot of spare CPUs (e.g. 8) you can do this...
-
-```sh
-./get_cikcodes.py | xargs -n 1 --max-procs 8 --verbose ./grammar_parse.py --random-order --cikcode
-```
-
-It also uses up the bulk of the disk space in the database. (99% or higher.)
-
-19. Run `number_sentences.py`
-
-20. `refresh materialized view directors_active_on_filing_date_materialized`
-
-21. Run `pronoun_resolution.py`
-
-21. `refresh materialized view pronoun_usage_over_time;`
-
-----
-
-What I need to do next:
-
-- Extract summary sentences and see what skills they have.
-
-----------------------------------------------------------------------
-
-From here on is the GPT-based approach.
-
-22. (Run this once only; it's not idempotent)
-
-  `prompts/generation2/setup.sh`
-
-23. `naive_sentences.py`
-
-It's nice if you run it in a loop with --progress --stop-after 1000
-
-
-24. Populate `vocabulary_required_for_prompt`. You'll use the prompt_ID from
-step 22 and vocabulary that would have to be in the relevant sections to be
-worth bothering with. (We only do this to save the number of OpenAI API calls
-we make, because otherwise it becomes expensive).
-
-25. Run `ask_openai_batch.py --prompt generation2`
-(Currently broken.)
+12. See how the batches are going with `uv run batchcheck.py`
 
 ----------------------------------------------------------------------
 
@@ -132,6 +74,8 @@ we make, because otherwise it becomes expensive).
 
 
 # Utilities
+
+These might or might not still work
 
 `get_company.py`
 
