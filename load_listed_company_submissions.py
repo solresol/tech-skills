@@ -84,25 +84,35 @@ insert into filings
     primaryDocDescription = %s
    """
 
+zip_entries = [entry for entry in submissions.namelist() if entry.startswith("CIK") and entry.endswith(".json")]
+
 if args.only_cikcode:
-    read_cursor.execute("select distinct cikcode from listed_company_details where cikcode = %s", [args.only_cikcode])
-else:
-    read_cursor.execute("select distinct cikcode from listed_company_details")
+    zip_entries = [f"CIK{args.only_cikcode:010d}.json"]
 
 if args.progress:
     import tqdm
-    iterator = tqdm.tqdm(read_cursor, total=read_cursor.rowcount)
+    iterator = tqdm.tqdm(zip_entries)
 else:
-    iterator = read_cursor
+    iterator = zip_entries
 
-for row in iterator:
-    cikcode = row[0]
+for entry in iterator:
+    # Check if filename is of the right format (CIK followed by numbers and .json)
+    if not (entry.startswith("CIK") and entry[3:-5].isdigit() and entry.endswith(".json")):
+        continue
+        
+    cikcode = int(entry[3:-5])
+    
     try:
-        source_data = submissions.read(f"CIK{cikcode:010d}.json")
-    except KeyError:
-        logging.error(f"Missing data for cikcode = {cikcode}")
-        write_cursor.execute("insert into vanished_cikcodes (cikcode) values (%s) on conflict do nothing", [cikcode])
-        conn.commit()
+        source_data = submissions.read(entry)
+        json_data = json.loads(source_data)
+        
+        # Skip entries without "tickers" key or with empty tickers
+        if "tickers" not in json_data or not json_data["tickers"]:
+            logging.info(f"Skipping {entry}: No tickers found")
+            continue
+            
+    except Exception as e:
+        logging.error(f"Error processing {entry}: {str(e)}")
         continue
     json_data = json.loads(source_data)
     data = psycopg2.extras.Json(json_data)
