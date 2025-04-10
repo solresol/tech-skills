@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import configparser
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
@@ -20,6 +21,9 @@ parser.add_argument("--form",
 parser.add_argument("--retry-past-failures",
                     action="store_true",
                     help="If a document was unfetchable in the past, normally we don't try again, but with this option we will")
+
+parser.add_argument("--url",
+                    help="For debugging, only fetch this one URL")
 args = parser.parse_args()
 
 import pgconnect
@@ -44,7 +48,14 @@ if args.retry_past_failures:
 else:
     unfetched += " and document_storage_url not in (select url from html_fetch_failures)"
 
-read_cursor.execute(unfetched, [args.form, args.year])
+params = [args.form, args.year]
+
+if args.url:
+    # Ignore most parameters
+    unfetched = "select document_storage_url from filings where document_storage_url = %s"
+    params = [args.url]
+
+read_cursor.execute(unfetched, params)
 
 if args.progress:
     import tqdm
@@ -52,9 +63,13 @@ if args.progress:
 else:
     iterator = read_cursor
 
+
+config = configparser.ConfigParser()
+config.read(args.database_config)
+my_user_agent = config['edgar']['useragent']
+
 for row in iterator:
     url = row[0]
-    my_user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36'
     r = requests.get(url, headers={'User-Agent': my_user_agent})
     if r.status_code != 200:
         write_cursor.execute("insert into html_fetch_failures (url, status_code) values (%s, %s) on conflict (url) do update set status_code = %s, date_attempted = current_timestamp",
@@ -62,6 +77,7 @@ for row in iterator:
         logging.error(f"Could not fetch {url}: {r.status_code}")
         conn.commit()
         continue
+        time.sleep(1)
     write_cursor.execute("insert into html_doc_cache (url, content, encoding, content_type) values (%s, %s, %s, %s)", [url, r.content, r.encoding, r.headers.get('content-type')])
     conn.commit()
     # Chill out so we don't hit rate limits
