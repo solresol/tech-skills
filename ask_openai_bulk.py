@@ -139,46 +139,51 @@ for cikcode, accession_number, content, encoding, content_type, url in iterator:
     logging.info(f"Processing {cikcode=}, {accession_number=}")
     if args.progress:
         iterator.set_description(f"{cikcode} {accession_number}")
-    if content_type != 'text/html':
-        sys.exit(f"Don't know how to handle {cikcode=} {accessionnumber=} because {content_type=}")
-    raw_html = bytes(content).decode(encoding)
-    soup = BeautifulSoup(raw_html, "lxml")
+    if content_type == 'text/plain':
+        text_version = bytes(content).decode(encoding)
+    elif content_type == 'text/html':
+        raw_html = bytes(content).decode(encoding)
+        soup = BeautifulSoup(raw_html, "lxml")
 
-    # Remove CSS and JS
-    for tag in soup(["style", "script"]):
-        tag.decompose()
-
-    # Remove empty tags
-    for tag in soup.find_all():
-        if not tag.get_text(strip=True):
+        # Remove CSS and JS
+        for tag in soup(["style", "script"]):
             tag.decompose()
 
-    # Remove known junk spans (invisible content)
-    for span in soup.find_all("span", style=True):
-        style = span["style"].lower()
-        if "visibility:hidden" in style or "font-size:3pt" in style:
-            span.decompose()
+        # Remove empty tags
+        for tag in soup.find_all():
+            if not tag.get_text(strip=True):
+                tag.decompose()
 
-    # Remove inline styles and classes
-    for tag in soup.find_all(True):
-        tag.attrs = {}
+        # Remove known junk spans (invisible content)
+        for span in soup.find_all("span", style=True):
+            style = span["style"].lower()
+            if "visibility:hidden" in style or "font-size:3pt" in style:
+                span.decompose()
 
-    for tag in soup.find_all('font'):
-        tag.unwrap()
+        # Remove inline styles and classes
+        for tag in soup.find_all(True):
+            tag.attrs = {}
 
-    for tag in soup.find_all('a'):
-        tag.unwrap()        
+        for tag in soup.find_all('font'):
+            tag.unwrap()
 
-    text_version = str(soup)
-    for tail_tag in ['</td>', '</tr>', '</li>', '</p>']:
-        text_version = text_version.replace(tail_tag, '')
-    while True:
-        space_reduction = text_version.replace('\n\n', '\n')
-        if space_reduction == text_version:
-            break
-        text_version = space_reduction
+        for tag in soup.find_all('a'):
+            tag.unwrap()        
 
-    system_prompt = """Extract the names of all directors listed in this DEF 14A filing, and identify if they have any software-related or adjacent technical skills. Examples of relevant skills include: experience as a programmer, CTO, CIO, software engineer, cybersecurity specialist, or having degrees in computer science, software engineering, mathematics, or similar technical qualifications. 
+        text_version = str(soup)
+        for tail_tag in ['</td>', '</tr>', '</li>', '</p>']:
+            text_version = text_version.replace(tail_tag, '')
+
+        while True:
+            space_reduction = text_version.replace('\n\n', '\n')
+            if space_reduction == text_version:
+                break
+            text_version = space_reduction
+    else:
+        sys.exit(f"Don't know how to handle {cikcode=} {accession_number=} because {content_type=}")
+
+        
+    system_prompt = """Extract the names of all directors listed in this DEF 14A filing, and identify if they have any software-related or adjacent technical skills that would indicate that they can write programs. Examples of relevant skills include: experience as a programmer, software engineer, cybersecurity specialist, or having degrees in computer science, software engineering, mathematics, or similar technical qualifications. Just being a director or manager who had oversight over an organisation that wrote or ran software is not sufficient.
 
 For each director, clearly state:
 - Their full name.
@@ -186,6 +191,8 @@ For each director, clearly state:
 - Provide a brief reason supporting your determination.
 - Include a relevant excerpt from the filing as a source reference.
 """
+
+    
     
     batch_text = {
         "custom_id": url,
