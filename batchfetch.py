@@ -65,20 +65,23 @@ for local_batch_id, openai_batch_id in cursor:
         if record['response']['status_code'] != 200:
             continue
         
-        # Extract the tool call arguments
-        arguments = json.loads(record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'])
-        
         # Get the filename (which was used as the custom_id)
         url = record['custom_id']
 
         lookup_cursor.execute("select cikcode, accessionNumber from filings where document_storage_url = %s", [url])
         cikcode, accession_number = lookup_cursor.fetchone()
         # Just assume it works. Unless OpenAI makes something up, we're just getting back something we gave it
-        
+
         # Extract usage information
         usage = record['response']['body']['usage']
         model = record['response']['body']['model'] + " (batch)"
 
+        # Extract the tool call arguments
+        try:
+            arguments = json.loads(record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'])
+        except json.decoder.JSONDecodeError:
+            arguments = {'error': 'malformed json', 'text': record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'] }
+            
         # Update the files table with the analysis results
         update_cursor.execute("""
              INSERT INTO director_extraction_raw (cikcode, accessionNumber, response, prompt_tokens, completion_tokens)
@@ -107,3 +110,4 @@ if args.show_costs:
     print(f"Cost (USD):        {cost:.2f}")
 
 cursor.execute("refresh materialized view director_mentions")
+conn.commit()
