@@ -144,4 +144,5 @@ for entry in iterator:
         write_cursor.execute(insertion_query, insert_data + update_data)
     conn.commit()
 
-write_cursor('refresh materialized view cik2ticker')
+write_cursor.execute('refresh materialized view cik2ticker')
+conn.commit()
