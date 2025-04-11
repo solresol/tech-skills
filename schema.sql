@@ -120,6 +120,7 @@ create table filings (
 create index on filings(cikcode);
 create index on filings(extract(year from filingDate));
 create unique index on filings(document_storage_url);
+create index on filings(accessionNumber);
 
 create table html_doc_cache (
   url varchar primary key,
