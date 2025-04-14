@@ -180,6 +180,7 @@ FROM director_extraction_raw,
      jsonb_array_elements(response->'directors') AS director;
 
 
+
 -- create materialized view cik2ticker as select
 --    cast(submission->>'cik' as int) as cikcode,
 --    submission->>'name' as company_name,
@@ -202,7 +203,6 @@ create view company_directorships as select
 from filings join cik2name using(cikcode)
      join director_mentions using(accessionnumber)
  group by company_name, cik2name.cikcode, director_name;
-
 
 
 --create view
