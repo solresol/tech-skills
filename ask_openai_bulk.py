@@ -156,6 +156,14 @@ for cikcode, accession_number, content, encoding, content_type, url in iterator:
 
         # Remove known junk spans (invisible content)
         for span in soup.find_all("span", style=True):
+            if span is None:
+                # this makes no sense at all
+                continue
+            if "style" not in span:
+                continue
+            if span["style"] is None:
+                # don't know how this can happen
+                continue            
             style = span["style"].lower()
             if "visibility:hidden" in style or "font-size:3pt" in style:
                 span.decompose()
