@@ -75,6 +75,19 @@ That should probably be in a cron job.
 - https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip
 
 
+# To-do
+
+Get company share price on the day of their filing, and compare it
+to the following year(s).
+
+Look at the quantity of text in a filing and see if it has any 
+relationship to the following year(s).
+
+Look at Herdan's law and Zipf's law on the texts and see if the
+complexity of language shows anything.
+
+Can we predict high-level fraud from the filings?
+
 
 # Utilities
 
