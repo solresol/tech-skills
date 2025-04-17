@@ -49,7 +49,7 @@ work_to_be_done = False
 
 for local_batch_id, openai_batch_id in cursor:
     openai_result = client.batches.retrieve(openai_batch_id)
-    if openai_result.status != 'completed':
+    if openai_result.status != 'completed' and openai_result.status != 'expired':
         continue
     if openai_result.error_file_id is not None:
         error_file_response = client.files.content(openai_result.error_file_id)
