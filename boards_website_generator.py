@@ -282,6 +282,7 @@ def setup_jinja_environment():
     <header>
         <h1>Corporate Board Directors Database</h1>
         <p>Explore directors of U.S. listed companies</p>
+    <p>{{percent_complete|round(2)}}% of {{doc_cache_size}} filings analysed</p>
     </header>
     
     <div class="container">
@@ -364,6 +365,19 @@ def setup_jinja_environment():
 def fetch_data(conn):
     """Fetch all required data from database."""
     cursor = conn.cursor()
+
+    cursor.execute("select count(*) from html_doc_cache")
+    row = cursor.fetchone()
+    doc_cache_size = row[0]
+
+    cursor.execute("select count(distinct accessionNumber) from director_extraction_raw")
+    row = cursor.fetchone()
+    accessions_processed = row[0]
+    percent_complete = 100.0 * accessions_processed / doc_cache_size
+    if percent_complete > 100:
+        # There are some duplicate accessionNumbers
+        percent_complete = 100.0
+    
     
     # Main query to get all director mentions with company info
     query = """
@@ -389,7 +403,7 @@ def fetch_data(conn):
     
     cursor.close()
     
-    return all_data, directors
+    return doc_cache_size, percent_complete, all_data, directors
 
 
 def process_data(all_data):
@@ -418,7 +432,7 @@ def process_data(all_data):
 def generate_website(output_dir, conn):
     """Generate the website."""
     # Fetch data
-    all_data, directors = fetch_data(conn)
+    doc_cache_size, percent_complete, all_data, directors = fetch_data(conn)
     
     # Process data
     director_profiles = process_data(all_data)
@@ -438,7 +452,9 @@ def generate_website(output_dir, conn):
     with open(os.path.join(output_dir, "index.html"), "w") as f:
         f.write(templates['index'].render(
             directors=director_list,
-            last_updated=last_updated
+            last_updated=last_updated,
+            percent_complete=percent_complete,
+            doc_cache_size=doc_cache_size
         ))
     
     # Generate director pages
