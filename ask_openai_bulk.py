@@ -207,7 +207,7 @@ For each director, clearly state:
         "method": "POST",
         "url": "/v1/chat/completions",
         "body": {
-            "model": "gpt-4o-mini",
+            "model": "gpt-4.1-mini",
             "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
             "temperature": 0,
             "tools": tools,
