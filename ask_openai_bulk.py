@@ -141,6 +141,9 @@ for cikcode, accession_number, content, encoding, content_type, url in iterator:
         iterator.set_description(f"{cikcode} {accession_number}")
     if content_type == 'text/plain':
         text_version = bytes(content).decode(encoding)
+    elif content_type == 'image/gif':
+        sys.stderr.write(f"{cikcode} {accession_number} is a gif. {url}\n")
+        continue
     elif content_type == 'text/html':
         raw_html = bytes(content).decode(encoding)
         soup = BeautifulSoup(raw_html, "lxml")
