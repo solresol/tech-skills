@@ -47,7 +47,7 @@ def encode_director_name(name):
     while old_name != name:
         old_name = name
         name = name.replace('  ', ' ')
-    return urllib.parse.quote(name.lower().replace(" ", "-"))
+    return urllib.parse.quote_plus(name.lower())
 
 
 def create_css(output_dir):
@@ -61,6 +61,9 @@ def create_css(output_dir):
         --text-color: #333;
         --light-gray: #ecf0f1;
         --dark-gray: #7f8c8d;
+        --tech-low: #cccccc;      /* Gray for non-tech */
+        --tech-mid: #3498db;      /* Blue for medium tech */
+        --tech-high: #2ecc71;     /* Green for high tech */
     }
     
     * {
@@ -77,6 +80,37 @@ def create_css(output_dir):
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
+    }
+    
+    /* Tech score color classes */
+    .tech-score-0 { color: var(--tech-low); }
+    .tech-score-10 { color: rgb(204, 204, 220); }
+    .tech-score-20 { color: rgb(178, 190, 230); }
+    .tech-score-30 { color: rgb(152, 175, 240); }
+    .tech-score-40 { color: rgb(126, 161, 245); }
+    .tech-score-50 { color: rgb(100, 146, 237); }
+    .tech-score-60 { color: rgb(89, 156, 225); }
+    .tech-score-70 { color: rgb(78, 166, 213); }
+    .tech-score-80 { color: rgb(67, 177, 201); }
+    .tech-score-90 { color: rgb(56, 187, 189); }
+    .tech-score-100 { color: var(--tech-high); }
+    
+    .tech-score-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        background-color: var(--light-gray);
+        color: var(--text-color);
+        font-size: 0.8em;
+        margin-left: 8px;
+    }
+    
+    .tech-evidence {
+        margin-top: 20px;
+        background-color: rgba(46, 204, 113, 0.1);
+        border-left: 3px solid var(--tech-high);
+        padding: 15px;
+        border-radius: 4px;
     }
     
     header {
@@ -275,15 +309,28 @@ def setup_jinja_environment():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Corporate Board Directors Database</title>
+    <title>Database of Software Skills in Corporate Board Directors</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <header>
-        <h1>Corporate Board Directors Database</h1>
+        <h1>Database of Software Skills in Corporate Board Directors</h1>
         <p>Explore directors of U.S. listed companies</p>
-    <p>{{percent_complete|round(2)}}% of {{doc_cache_size}} filings analysed</p>
+        <p>{{percent_complete|round(2)}}% of {{doc_cache_size}} filings analysed</p>
+        <p><strong>{{software_skills_percentage|round(1)}}%</strong> of board directors have software skills</p>
     </header>
+
+    <div class="purpose">
+    <p>
+    <a href="https://a16z.com/why-software-is-eating-the-world/">Software is eating the world</a>. The future of business is bots-supervising-bots to do the white collar work, with a small dash of human oversight.
+    </p>
+    <p>
+    A lot has to happen to get us from here to there safely. We need wise and knowledgeable leaders who understand how AI bots work at a deep level in order to guide us on this path. <a href="https://en.wikipedia.org/wiki/AI_alignment">AI Alignment</a> is not something that you can do if you only have a high-level understanding. So let's ask how many directors seem to have the right background that they would be able to review plans to use AI.
+    </p>
+    <p>
+    Incidentally, I <a href="http://www.ifost.org.au/">run workshops</a> for senior managers on these sorts of topics.
+    </p>
+    </div>
     
     <div class="container">
         <div class="search-container">
@@ -293,10 +340,22 @@ def setup_jinja_environment():
         <div class="director-list">
             {% for director in directors %}
             <div class="director-card">
-                <a href="directors/{{ director.url }}.html">{{ director.name }}</a>
+                {% set tech_score = director.tech_score|int %}
+                {% set tech_class = "tech-score-" ~ (tech_score // 10 * 10) %}
+                <a href="directors/{{ director.url }}.html" class="{{ tech_class }}">
+                    {{ director.name }}
+                    <span class="tech-score-badge">{{ tech_score }}</span>
+                </a>
             </div>
             {% endfor %}
         </div>
+    </div>
+    
+    <div class="container">
+        <h2>About Tech Score</h2>
+        <p>The Tech Score (0-100) indicates how often a director is described in terms of their software/technology skills or background. 
+        Higher scores mean stronger evidence of technology expertise.</p>
+        <p>Color intensity reflects the score: gray (0) → blue (50) → green (100).</p>
     </div>
     
     <div class="footnote">
@@ -319,11 +378,39 @@ def setup_jinja_environment():
     <header>
         <h1>{{ director_name }}</h1>
         <p>Corporate Board Profile</p>
+        <p>Tech Score: <span class="tech-score-{{ tech_score_class }}">{{ tech_score }}</span>/100</p>
     </header>
     
     <a href="../index.html" class="back-link">← Back to All Directors</a>
     
-    {% for company_name, mentions in companies.items() %}
+    {% if tech_mentions and tech_mentions|length > 0 %}
+    <div class="container company-section tech-evidence">
+        <h2>Software Technology Evidence</h2>
+        <p>{{ tech_mentions|length }} mention(s) identify {{ director_name }} as having software/technology expertise.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Company</th>
+                    <th>Filing Date</th>
+                    <th>Evidence</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mention in tech_mentions %}
+                <tr>
+                    <td>{{ mention.company_name }}</td>
+                    <td><a href="{{ mention.document_storage_url }}" target="_blank">{{ mention.filingdate }}</a></td>
+                    <td>{{ mention.source_excerpt }}</td>
+                    <td>{{ mention.reason }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    {% for company_name, mentions in companies.items() if company_name != 'tech_mentions' %}
     <div class="container company-section">
         <h2>{{ company_name }}</h2>
         <table>
@@ -378,15 +465,21 @@ def fetch_data(conn):
         # There are some duplicate accessionNumbers
         percent_complete = 100.0
     
+    # Query to get percentage of directors with software background
+    cursor.execute("select avg(cast(software_background as int))*100.0 from director_mentions")
+    row = cursor.fetchone()
+    software_skills_percentage = row[0]
     
-    # Main query to get all director mentions with company info
+    # Main query to get all director mentions with company info and tech background
     query = """
     SELECT 
         director_name, 
         company_name, 
         filingdate, 
         source_excerpt, 
-        document_storage_url 
+        document_storage_url,
+        software_background,
+        reason
     FROM 
         director_mentions 
         JOIN filings USING (cikcode, accessionnumber) 
@@ -397,13 +490,24 @@ def fetch_data(conn):
     cursor.execute(query)
     all_data = cursor.fetchall()
     
-    # Query to get distinct directors for index page
-    cursor.execute("SELECT DISTINCT director_name FROM director_mentions ORDER BY director_name")
+    # Query to get distinct directors with their tech scores for index page
+    tech_score_query = """
+    SELECT 
+        director_name,
+        ROUND(100.0 * SUM(CASE WHEN software_background THEN 1 ELSE 0 END) / COUNT(*)) AS tech_score
+    FROM 
+        director_mentions
+    GROUP BY 
+        director_name
+    ORDER BY 
+        director_name
+    """
+    cursor.execute(tech_score_query)
     directors = cursor.fetchall()
     
     cursor.close()
     
-    return doc_cache_size, percent_complete, all_data, directors
+    return doc_cache_size, percent_complete, all_data, directors, software_skills_percentage
 
 
 def process_data(all_data):
@@ -412,19 +516,33 @@ def process_data(all_data):
     director_profiles = {}
     
     for row in all_data:
-        director_name, company_name, filingdate, source_excerpt, document_url = row
+        director_name, company_name, filingdate, source_excerpt, document_url, software_background, reason = row
         
         if director_name not in director_profiles:
             director_profiles[director_name] = {}
+            director_profiles[director_name]['tech_mentions'] = []
             
         if company_name not in director_profiles[director_name]:
             director_profiles[director_name][company_name] = []
             
+        # Add mention to company list
         director_profiles[director_name][company_name].append({
             'filingdate': filingdate,
             'source_excerpt': source_excerpt,
-            'document_storage_url': document_url
+            'document_storage_url': document_url,
+            'software_background': software_background,
+            'reason': reason
         })
+        
+        # If this is a tech mention, add to tech_mentions for evidence
+        if software_background:
+            director_profiles[director_name]['tech_mentions'].append({
+                'company_name': company_name,
+                'filingdate': filingdate,
+                'source_excerpt': source_excerpt,
+                'document_storage_url': document_url,
+                'reason': reason
+            })
     
     return director_profiles
 
@@ -432,10 +550,13 @@ def process_data(all_data):
 def generate_website(output_dir, conn):
     """Generate the website."""
     # Fetch data
-    doc_cache_size, percent_complete, all_data, directors = fetch_data(conn)
+    doc_cache_size, percent_complete, all_data, directors, software_skills_percentage = fetch_data(conn)
     
     # Process data
     director_profiles = process_data(all_data)
+    
+    # Create a dictionary to map director names to tech scores
+    tech_scores = {director[0]: director[1] for director in directors}
     
     # Setup Jinja2 templates
     templates = setup_jinja_environment()
@@ -443,9 +564,13 @@ def generate_website(output_dir, conn):
     # Current date for "last updated"
     last_updated = datetime.now().strftime("%Y-%m-%d")
     
-    # Generate index page
+    # Generate index page with tech scores
     director_list = [
-        {'name': director[0], 'url': encode_director_name(director[0])} 
+        {
+            'name': director[0], 
+            'url': encode_director_name(director[0]),
+            'tech_score': director[1]
+        } 
         for director in directors
     ]
     
@@ -454,16 +579,26 @@ def generate_website(output_dir, conn):
             directors=director_list,
             last_updated=last_updated,
             percent_complete=percent_complete,
-            doc_cache_size=doc_cache_size
+            doc_cache_size=doc_cache_size,
+            software_skills_percentage=software_skills_percentage
         ))
     
-    # Generate director pages
+    # Generate director pages with tech evidence
     for director_name, companies in director_profiles.items():
         url_safe_name = encode_director_name(director_name)
+        tech_score = tech_scores.get(director_name, 0)
+        tech_score_class = (tech_score // 10) * 10  # Round down to nearest 10
+        
+        # Get tech mentions for this director
+        tech_mentions = companies.get('tech_mentions', [])
+        
         with open(os.path.join(output_dir, "directors", f"{url_safe_name}.html"), "w") as f:
             f.write(templates['director'].render(
                 director_name=director_name,
                 companies=companies,
+                tech_score=tech_score,
+                tech_score_class=tech_score_class,
+                tech_mentions=tech_mentions,
                 last_updated=last_updated
             ))
 
