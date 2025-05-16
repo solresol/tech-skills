@@ -205,27 +205,5 @@ if args.show_costs:
     cost = prompt_pricing * total_prompt_tokens + completion_pricing * total_completion_tokens
     print(f"Cost (USD):        {cost:.2f}")
 
-# Create a view for easier querying if it doesn't exist yet
-cursor.execute("""
-CREATE OR REPLACE VIEW director_compensation_summary AS
-SELECT 
-    f.cikcode,
-    f.accessionnumber,
-    f.filingdate,
-    dd.name,
-    dd.age,
-    dd.role,
-    dd.compensation,
-    (SELECT array_agg(committee_name) FROM director_committees WHERE director_id = dd.id) AS committees
-FROM 
-    director_details dd
-JOIN 
-    director_compensation dc ON dd.url = dc.url
-JOIN 
-    filings f ON dc.url = f.document_storage_url
-WHERE 
-    dc.processed = TRUE
-ORDER BY 
-    f.accessionnumber, dd.name
-""")
+# No need to create or replace views in this script - that should be done in schema management scripts
 conn.commit()
