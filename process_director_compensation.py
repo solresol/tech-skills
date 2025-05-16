@@ -139,14 +139,15 @@ for local_batch_id, openai_batch_id in cursor:
                     for director in arguments['directors']:
                         # Insert director details
                         update_cursor.execute("""
-                            INSERT INTO director_details (url, name, age, role, compensation, source_excerpt)
-                            VALUES (%s, %s, %s, %s, %s, %s)
+                            INSERT INTO director_details (url, name, age, role, gender, compensation, source_excerpt)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
                             RETURNING id
                         """, [
                             url, 
                             director.get('name', ''), 
                             director.get('age', 0),
                             director.get('role', ''),
+                            director.get('gender', 'unknown'),
                             director.get('compensation', 0),
                             director.get('source_excerpt', '')
                         ])
