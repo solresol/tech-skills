@@ -107,13 +107,13 @@ tools = [{
                                 "type": "string",
                                 "description": "Full name of the director."
                             },
-                            "software_background": {
-                                "type": "boolean",
-                                "description": "True if director has software or related technical skills, otherwise false."
-                            },
                             "reason": {
                                 "type": "string",
                                 "description": "Brief explanation supporting the determination."
+                            },
+                            "software_background": {
+                                "type": "boolean",
+                                "description": "True if director has software or related technical skills, otherwise false."
                             },
                             "source_excerpt": {
                                 "type": "string",
