@@ -47,6 +47,18 @@ total_completion_tokens = 0
 update_cursor.execute("begin transaction")
 work_to_be_done = False
 
+# Function to clean null characters and other problematic Unicode
+def clean_json_for_postgres(json_obj):
+    if isinstance(json_obj, str):
+        # Replace null bytes and other potentially problematic characters
+        return json_obj.replace('\u0000', '')
+    elif isinstance(json_obj, dict):
+        return {k: clean_json_for_postgres(v) for k, v in json_obj.items()}
+    elif isinstance(json_obj, list):
+        return [clean_json_for_postgres(item) for item in json_obj]
+    else:
+        return json_obj
+
 for local_batch_id, openai_batch_id in cursor:
     openai_result = client.batches.retrieve(openai_batch_id)
     if openai_result.status != 'completed' and openai_result.status != 'expired':
@@ -79,6 +91,8 @@ for local_batch_id, openai_batch_id in cursor:
         # Extract the tool call arguments
         try:
             arguments = json.loads(record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'])
+            # Clean the arguments before storing
+            arguments = clean_json_for_postgres(arguments)
         except json.decoder.JSONDecodeError:
             arguments = {'error': 'malformed json', 'text': record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'] }
             
