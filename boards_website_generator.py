@@ -31,6 +31,10 @@ def encode_director_name(name):
     # At the moment, we have the problem that if one person has two spellings
     # we only write a file out for one of them (and it's random which).
 
+    # Handle None value
+    if name is None:
+        return "unknown-director"
+        
     # We don't handle Christopher O'Neill properly, because one spelling
     # uses ' and the other uses a non-ASCII symbol
     name = name.replace('"', '')
