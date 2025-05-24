@@ -1,0 +1,98 @@
+\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usetheme{Madrid}
+\title{Tech-Skills Project Overview}
+\author{COMP3420 Case Study}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Motivation}
+  \begin{itemize}
+    \item Original idea: measure corporate \emph{hypocrisy}.
+    \item Compare companies proclaiming technology-driven growth with their actual board composition.
+    \item Many talked the talk but had few technologists on the board.
+    \item Evolved into exploring trading strategies based on directors' backgrounds.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Data Sources}
+  \begin{itemize}
+    \item SEC EDGAR filings (e.g., DEF~14A, 10-K) provide information on directors and company statements.
+    \item BoardEx datasets with detailed director profiles.
+    \item Submissions index with ticker--CIK mappings.
+    \item OpenAI models for NLP extraction of tables and text.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Pipeline Overview}
+  \begin{enumerate}
+    \item Download filings and BoardEx data, load into PostgreSQL.
+    \item Extract textual and tabular information from filings.
+    \item Use OpenAI APIs to parse director skills, compensation, and committee roles.
+    \item Build a website summarising each company's board skills matrix.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{NLP Components}
+  \begin{itemize}
+    \item Sentence segmentation and pronoun resolution on proxy statements.
+    \item Classification of director expertise using OpenAI.
+    \item Optionally apply sklearn for additional analysis (clustering, similarity).
+    \item Potential use of Keras models for custom sequence processing.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Measuring \enquote{Technologist} Presence}
+  \begin{itemize}
+    \item Each director assigned a technology score based on keywords and profile analysis.
+    \item Scores aggregated to create an overall board tech score.
+    \item Companies ranked by how strongly they emphasise technology versus board composition.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Trading Strategy Concept}
+  \begin{itemize}
+    \item Hypothesis: boards with genuine tech expertise deliver better long-term performance.
+    \item Combine tech-score trends with market data to test strategies.
+    \item Use Python for backtesting (pandas, sklearn). Future work may include neural nets via Keras.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Current Status}
+  \begin{itemize}
+    \item Database schemas for filings, directors, and compensation are set up with SQL scripts.
+    \item Automated batch queries to OpenAI gather director details.
+    \item Website generation summarises boards and tech evidence.
+    \item Further analysis and trading models remain experimental.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{How to Run}
+  \begin{enumerate}
+    \item Configure PostgreSQL connection in \texttt{db.conf}.
+    \item Run SQL setup scripts (\texttt{schema.sql}, \texttt{etl.sql}).
+    \item Use \texttt{extract\_tickers.py} and \texttt{fetch\_forms\_from\_edgar.py} to obtain filings.
+    \item Process data with \texttt{extract\_director\_compensation.py} and \texttt{process\_director\_compensation.py}.
+    \item Generate the website via \texttt{boards\_website\_generator.py}.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Future Directions}
+  \begin{itemize}
+    \item Improved NLP models for role detection and sentiment analysis.
+    \item Cross-reference market performance to validate hypotheses.
+    \item Expand to global filings and other skill areas beyond technology.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \centering
+  \huge Questions?
+\end{frame}
+
+\end{document}
