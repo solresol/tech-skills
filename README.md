@@ -171,11 +171,16 @@ U.S. stock ticker for a specific date. The information is stored in a
 ### Usage
 Run the script with a ticker symbol and a date in `YYYY-MM-DD` format:
 ```bash
-python get_stock_price.py AAPL 2024-05-10
+python stock_price.py AAPL 2024-05-10
 ```
-The script outputs the closing price and stores it in the database. If the
-record already exists, the stored value is printed without reaching out to the
-network.
+The script outputs the closing price and stores it in the database. Use
+`--force` to refetch a price even if it already exists, or `--dummy-run` to
+avoid storing the result.
+
+To populate prices for many processed DEF 14A filings in bulk, run:
+```bash
+./fetch_prices_for_director_filings.py --stop-after 200
+```
 
 ## Director Compensation Extraction Tool
 
