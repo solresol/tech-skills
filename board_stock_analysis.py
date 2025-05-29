@@ -3,12 +3,15 @@
 
 import argparse
 
+import os
+
 import jinja2
 import pandas as pd
 import numpy as np
 import pgconnect
-from scipy.stats import mannwhitneyu
-from sklearn.linear_model import LinearRegression
+from scipy.stats import mannwhitneyu, linregress
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -26,16 +29,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <h2>Mann-Whitney U Test</h2>
         <p>U statistic: {{ u_stat | round(2) }}</p>
         <p>p-value: {{ p_value | round(4) }}</p>
+        <img src='growth_violin.png' alt='Growth distribution by board type'>
     </div>
     <div class='container'>
         <h2>Regression: Number of Software Directors</h2>
         <p>y = {{ slope_num | round(4) }} * x + {{ intercept_num | round(4) }}</p>
         <p>R<sup>2</sup>: {{ r2_num | round(4) }}</p>
+        <p>p-value: {{ p_num | round(4) }}</p>
+        <img src='num_regression.png' alt='Regression number of software directors'>
     </div>
     <div class='container'>
         <h2>Regression: Proportion of Software Directors</h2>
         <p>y = {{ slope_prop | round(4) }} * x + {{ intercept_prop | round(4) }}</p>
         <p>R<sup>2</sup>: {{ r2_prop | round(4) }}</p>
+        <p>p-value: {{ p_prop | round(4) }}</p>
+        <img src='prop_regression.png' alt='Regression proportion of software directors'>
     </div>
 </body>
 </html>"""
@@ -50,6 +58,10 @@ def main() -> None:
         help="Where to write the HTML results",
     )
     args = parser.parse_args()
+
+    output_dir = os.path.dirname(args.output_file)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
 
     conn = pgconnect.connect(args.database_config)
     query = """
@@ -105,20 +117,45 @@ def main() -> None:
     else:
         u_stat, p_val = float("nan"), float("nan")
 
-    lr_num = LinearRegression()
-    X_num = np.asarray(res_df["num_software"]).reshape(-1, 1)
     y = np.asarray(res_df["growth"])
-    lr_num.fit(X_num, y)
-    slope_num = lr_num.coef_[0]
-    intercept_num = lr_num.intercept_
-    r2_num = lr_num.score(X_num, y)
 
-    lr_prop = LinearRegression()
-    X_prop = np.asarray(res_df["prop_software"]).reshape(-1, 1)
-    lr_prop.fit(X_prop, y)
-    slope_prop = lr_prop.coef_[0]
-    intercept_prop = lr_prop.intercept_
-    r2_prop = lr_prop.score(X_prop, y)
+    lr_num = linregress(res_df["num_software"], y)
+    slope_num = lr_num.slope
+    intercept_num = lr_num.intercept
+    r2_num = lr_num.rvalue**2
+    p_num = lr_num.pvalue
+
+    lr_prop = linregress(res_df["prop_software"], y)
+    slope_prop = lr_prop.slope
+    intercept_prop = lr_prop.intercept
+    r2_prop = lr_prop.rvalue**2
+    p_prop = lr_prop.pvalue
+
+    # Generate violin plot for growth distributions
+    fig, ax = plt.subplots()
+    sns.violinplot(x="has_software", y="growth", data=res_df, ax=ax)
+    ax.set_xlabel("Has Software Director")
+    ax.set_ylabel("Stock Growth (%)")
+    violin_path = os.path.join(output_dir, "growth_violin.png")
+    fig.savefig(violin_path)
+    plt.close(fig)
+
+    # Scatter/regression plots
+    fig, ax = plt.subplots()
+    sns.regplot(x="num_software", y="growth", data=res_df, ci=None, ax=ax)
+    ax.set_xlabel("Number of Software Directors")
+    ax.set_ylabel("Stock Growth (%)")
+    num_reg_path = os.path.join(output_dir, "num_regression.png")
+    fig.savefig(num_reg_path)
+    plt.close(fig)
+
+    fig, ax = plt.subplots()
+    sns.regplot(x="prop_software", y="growth", data=res_df, ci=None, ax=ax)
+    ax.set_xlabel("Proportion of Software Directors")
+    ax.set_ylabel("Stock Growth (%)")
+    prop_reg_path = os.path.join(output_dir, "prop_regression.png")
+    fig.savefig(prop_reg_path)
+    plt.close(fig)
 
     template = jinja2.Template(HTML_TEMPLATE)
     html = template.render(
@@ -127,9 +164,11 @@ def main() -> None:
         slope_num=slope_num,
         intercept_num=intercept_num,
         r2_num=r2_num,
+        p_num=p_num,
         slope_prop=slope_prop,
         intercept_prop=intercept_prop,
         r2_prop=r2_prop,
+        p_prop=p_prop,
     )
 
     with open(args.output_file, "w") as fh:
