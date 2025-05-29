@@ -9,9 +9,6 @@ parser.add_argument("--database-config",
 parser.add_argument("--cikcode",
                     type=int,
                     help="Only process documents from this cikcode")
-parser.add_argument("--prompt-id",
-                    required=True,
-                    help="Parse responses with this prompt_id")
 parser.add_argument("--csv-output",
                     help="Output to this CSV file")
 args = parser.parse_args()
@@ -30,21 +27,20 @@ read_cursor = conn.cursor()
 
 
 constraints = []
-constraint_args = [args.prompt_id]
+constraint_args = []
 if args.cikcode is not None:
     constraints.append("cikcode = %s")
     constraint_args.append(args.cikcode)
-if len(constraints) == 0:
-    constraints = ""
+if len(constraints) > 0:
+    constraints = " WHERE " + " and ".join(constraints)
 else:
-    constraints = " AND " + (' and '.join(constraints))
+    constraints = ""
 
 query = """
 select extract(year from filingDate), sentence
-from experience_sentences 
+from experience_sentences
 join nes_ranges using (nes_range_id)
 join filings using (cikcode, accessionNumber)
-where prompt_id = %s
 """ + constraints + " order by 1"
 
 read_cursor.execute(query, constraint_args)
