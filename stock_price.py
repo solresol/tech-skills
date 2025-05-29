@@ -48,9 +48,15 @@ def fetch_stock_price(conn, ticker: str, price_date, *, force: bool = False,
     if data.empty:
         raise RuntimeError("No data returned for the given ticker and date")
     # ``yf.download`` may return a DataFrame with a MultiIndex in some
-    # situations.  Using ``iloc`` ensures we correctly pick the first row
-    # regardless of whether ``data["Close"]`` yields a Series or a DataFrame.
-    close_price = float(data["Close"].iloc[0])
+    # situations.  ``data["Close"]`` will then yield a DataFrame rather than a
+    # Series.  Handle either case by using ``iat`` with the appropriate
+    # dimensionality so we always extract the scalar value without triggering
+    # pandas' ``float`` deprecation warning.
+    close_col = data["Close"]
+    if close_col.ndim == 2:
+        close_price = float(close_col.iat[0, 0])
+    else:
+        close_price = float(close_col.iat[0])
 
     if not dummy_run:
         if force:
