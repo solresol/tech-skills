@@ -33,9 +33,9 @@ def main() -> None:
     query = """
         SELECT DISTINCT f.filingDate, t.ticker
           FROM filings f
-          JOIN director_compensation dc ON f.document_storage_url = dc.url
+          JOIN director_extractions de ON f.document_storage_url = de.url
           JOIN cik_to_ticker t ON f.cikcode = t.cikcode
-         WHERE f.form = 'DEF 14A' AND dc.processed = TRUE
+         WHERE f.form = 'DEF 14A'
          ORDER BY f.filingDate
     """
     cur.execute(query)
