@@ -49,6 +49,9 @@ def main() -> None:
 
     count = 0
     for filing_date, ticker in iterator:
+        if args.stop_after and count >= args.stop_after:
+            break
+
         if args.force:
             cur.execute(
                 "DELETE FROM stock_price_failures WHERE ticker=%s AND price_date=%s",
@@ -62,9 +65,21 @@ def main() -> None:
             if cur.fetchone():
                 continue
 
+            cur.execute(
+                "SELECT 1 FROM stock_prices WHERE ticker=%s AND price_date=%s",
+                (ticker, filing_date),
+            )
+            if cur.fetchone():
+                continue
+
         try:
-            fetch_stock_price(conn, ticker, filing_date,
-                              force=args.force, dummy_run=args.dummy_run)
+            fetch_stock_price(
+                conn,
+                ticker,
+                filing_date,
+                force=args.force,
+                dummy_run=args.dummy_run,
+            )
         except RuntimeError as exc:
             cur.execute(
                 "INSERT INTO stock_price_failures (ticker, price_date, failure_msg)"
@@ -77,9 +92,8 @@ def main() -> None:
             logging.error("Failed to fetch %s on %s: %s", ticker, filing_date, exc)
         else:
             conn.commit()
-            count += 1
-            if args.stop_after and count >= args.stop_after:
-                break
+
+        count += 1
 
 
 if __name__ == "__main__":
