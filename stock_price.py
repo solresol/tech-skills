@@ -19,11 +19,6 @@ def fetch_stock_price(conn, ticker: str, price_date, *, force: bool = False,
 
     cur = conn.cursor()
 
-    # Ensure the table exists
-    with open(schema_file, "r") as f:
-        cur.execute(f.read())
-    conn.commit()
-
     if isinstance(price_date, str):
         price_date = datetime.strptime(price_date, "%Y-%m-%d").date()
     elif isinstance(price_date, datetime):
