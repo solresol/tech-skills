@@ -8,6 +8,7 @@ failure record and retries the download.
 
 import argparse
 import logging
+import time
 
 import pgconnect
 from stock_price import fetch_stock_price
@@ -94,6 +95,7 @@ def main() -> None:
             conn.commit()
 
         count += 1
+        time.sleep(1)
 
 
 if __name__ == "__main__":
