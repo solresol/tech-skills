@@ -9,6 +9,13 @@ import jinja2
 import pandas as pd
 import numpy as np
 import pgconnect
+import configparser
+import warnings
+
+try:
+    import sqlalchemy
+except ImportError:  # pragma: no cover - optional dependency may be missing
+    sqlalchemy = None
 from scipy.stats import mannwhitneyu, linregress
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -63,7 +70,16 @@ def main() -> None:
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
-    conn = pgconnect.connect(args.database_config)
+    config = configparser.ConfigParser()
+    config.read(args.database_config)
+
+    dbinfo = config["database"]
+    dbname = dbinfo["dbname"]
+    user = dbinfo["user"]
+    password = dbinfo["password"]
+    host = dbinfo["hostname"]
+    port = dbinfo.get("port", 5432)
+
     query = """
         WITH board_counts AS (
             SELECT cikcode, accessionnumber,
@@ -85,8 +101,20 @@ def main() -> None:
           JOIN board_counts bc USING (cikcode, accessionnumber)
          ORDER BY p.cikcode, p.filingdate
     """
-    df = pd.read_sql(query, conn)
-    conn.close()
+    if sqlalchemy is not None:
+        conn_uri = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}"
+        engine = sqlalchemy.create_engine(conn_uri)
+        df = pd.read_sql(query, engine)
+        engine.dispose()
+    else:
+        conn = pgconnect.connect(args.database_config)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="pandas only supports SQLAlchemy connectable",
+            )
+            df = pd.read_sql(query, conn)
+        conn.close()
 
     records = []
     prev = {}
