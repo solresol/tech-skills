@@ -181,6 +181,9 @@ To populate prices for many processed DEF 14A filings in bulk, run:
 ```bash
 ./fetch_prices_for_director_filings.py --stop-after 200
 ```
+Any ticker/date combination that can't be retrieved is recorded in the
+`stock_price_failures` table. A normal run skips these failures. Passing
+`--force` removes a prior failure entry and attempts the download again.
 
 ## Director Compensation Extraction Tool
 
