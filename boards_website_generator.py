@@ -622,6 +622,13 @@ def generate_network_visualization(output_dir, conn):
             .attr('width', width)
             .attr('height', height);
 
+        const maxCentrality = d3.max(data.nodes, d => d.centrality);
+        const sizeScale = d3.scaleLinear()
+            .domain([0, maxCentrality])
+            .range([5, 25]);
+        const colorScale = d3.scaleSequential(d3.interpolateBlues)
+            .domain([0, maxCentrality]);
+
         const simulation = d3.forceSimulation(data.nodes)
             .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(-50))
@@ -636,12 +643,20 @@ def generate_network_visualization(output_dir, conn):
         const node = svg.append('g').selectAll('circle')
             .data(data.nodes)
             .enter().append('circle')
-            .attr('r', d => 5 + d.centrality * 20)
-            .attr('fill', '#69b3a2')
+            .attr('r', d => sizeScale(d.centrality))
+            .attr('fill', d => colorScale(d.centrality))
             .call(d3.drag()
                 .on('start', dragstarted)
                 .on('drag', dragged)
                 .on('end', dragended));
+
+        const labels = svg.append('g').selectAll('text')
+            .data(data.nodes)
+            .enter().append('text')
+            .text(d => d.name)
+            .attr('font-size', 10)
+            .attr('dx', 8)
+            .attr('dy', 3);
 
         node.append('title').text(d => d.name);
 
@@ -655,6 +670,10 @@ def generate_network_visualization(output_dir, conn):
             node
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
+
+            labels
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
         });
 
         function dragstarted(event, d) {
