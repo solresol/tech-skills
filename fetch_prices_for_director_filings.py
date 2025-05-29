@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-"""Fetch stock prices for processed director filings."""
+"""Fetch stock prices for processed director filings.
+
+Failed downloads are recorded in ``stock_price_failures`` so they aren't
+retried on subsequent runs.  Using ``--force`` clears any existing
+failure record and retries the download.
+"""
 
 import argparse
+import logging
+
 import pgconnect
 from stock_price import fetch_stock_price
 
@@ -42,11 +49,37 @@ def main() -> None:
 
     count = 0
     for filing_date, ticker in iterator:
-        fetch_stock_price(conn, ticker, filing_date,
-                          force=args.force, dummy_run=args.dummy_run)
-        count += 1
-        if args.stop_after and count >= args.stop_after:
-            break
+        if args.force:
+            cur.execute(
+                "DELETE FROM stock_price_failures WHERE ticker=%s AND price_date=%s",
+                (ticker, filing_date),
+            )
+        else:
+            cur.execute(
+                "SELECT 1 FROM stock_price_failures WHERE ticker=%s AND price_date=%s",
+                (ticker, filing_date),
+            )
+            if cur.fetchone():
+                continue
+
+        try:
+            fetch_stock_price(conn, ticker, filing_date,
+                              force=args.force, dummy_run=args.dummy_run)
+        except RuntimeError as exc:
+            cur.execute(
+                "INSERT INTO stock_price_failures (ticker, price_date, failure_msg)"
+                " VALUES (%s, %s, %s)"
+                " ON CONFLICT (ticker, price_date) DO UPDATE"
+                " SET failure_msg = EXCLUDED.failure_msg",
+                (ticker, filing_date, str(exc)),
+            )
+            conn.commit()
+            logging.error("Failed to fetch %s on %s: %s", ticker, filing_date, exc)
+        else:
+            conn.commit()
+            count += 1
+            if args.stop_after and count >= args.stop_after:
+                break
 
 
 if __name__ == "__main__":

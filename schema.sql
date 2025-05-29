@@ -272,6 +272,14 @@ CREATE TABLE IF NOT EXISTS stock_prices (
     PRIMARY KEY (ticker, price_date)
 );
 
+-- Track failed attempts to retrieve a stock price
+CREATE TABLE IF NOT EXISTS stock_price_failures (
+    ticker TEXT NOT NULL,
+    price_date DATE NOT NULL,
+    failure_msg TEXT,
+    PRIMARY KEY (ticker, price_date)
+);
+
 -- Schema for the CIK to ticker mapping
 -- Create a new table for storing cikcode to ticker mappings
 CREATE TABLE IF NOT EXISTS cik_to_ticker (
