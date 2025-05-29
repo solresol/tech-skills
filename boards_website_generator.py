@@ -3,10 +3,12 @@
 import os
 import argparse
 import urllib.parse
-import pgconnect
+import json
 from datetime import datetime
 import jinja2
 import shutil
+import networkx as nx
+import pgconnect
 
 
 def create_output_directory(output_dir):
@@ -551,6 +553,135 @@ def process_data(all_data):
     return director_profiles
 
 
+def generate_network_visualization(output_dir, conn):
+    """Create a force-directed network visualisation dataset and page."""
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT cikcode, company_name FROM cik2name")
+    name_lookup = dict(cursor.fetchall())
+
+    cursor.execute(
+        """
+        SELECT c1.cikcode, c2.cikcode, COUNT(*)
+        FROM company_directorships c1
+        JOIN company_directorships c2
+          ON c1.director_name = c2.director_name
+         AND c1.cikcode < c2.cikcode
+        GROUP BY c1.cikcode, c2.cikcode
+        """
+    )
+    edges = cursor.fetchall()
+    cursor.close()
+
+    G = nx.Graph()
+
+    for cik, name in name_lookup.items():
+        G.add_node(cik, name=name)
+    for c1, c2, weight in edges:
+        G.add_edge(c1, c2, weight=weight)
+
+    for component in nx.connected_components(G):
+        sub = G.subgraph(component)
+        centrality = nx.eigenvector_centrality(sub)
+        for node, score in centrality.items():
+            G.nodes[node]["centrality"] = score
+
+    data = {
+        "nodes": [
+            {
+                "id": cik,
+                "name": G.nodes[cik]["name"],
+                "centrality": G.nodes[cik].get("centrality", 0.0),
+            }
+            for cik in G.nodes
+        ],
+        "links": [
+            {"source": u, "target": v, "weight": d["weight"]}
+            for u, v, d in G.edges(data=True)
+        ],
+    }
+
+    with open(os.path.join(output_dir, "network_data.json"), "w") as f:
+        json.dump(data, f)
+
+    html = """<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"UTF-8\">
+    <title>Company Director Network</title>
+    <script src=\"https://d3js.org/d3.v7.min.js\"></script>
+    <link rel=\"stylesheet\" href=\"css/style.css\">
+</head>
+<body>
+    <h1>Company Director Network</h1>
+    <div id=\"network\"></div>
+    <script>
+    fetch('network_data.json').then(r => r.json()).then(data => {
+        const width = 960, height = 600;
+        const svg = d3.select('#network').append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        const simulation = d3.forceSimulation(data.nodes)
+            .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-50))
+            .force('center', d3.forceCenter(width / 2, height / 2));
+
+        const link = svg.append('g').selectAll('line')
+            .data(data.links)
+            .enter().append('line')
+            .attr('stroke', '#999')
+            .attr('stroke-opacity', 0.6);
+
+        const node = svg.append('g').selectAll('circle')
+            .data(data.nodes)
+            .enter().append('circle')
+            .attr('r', d => 5 + d.centrality * 20)
+            .attr('fill', '#69b3a2')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+        node.append('title').text(d => d.name);
+
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+        });
+
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    });
+    </script>
+</body>
+</html>
+"""
+
+    with open(os.path.join(output_dir, "network.html"), "w") as f:
+        f.write(html)
+
+
+
 def generate_website(output_dir, conn):
     """Generate the website."""
     # Fetch data
@@ -622,9 +753,10 @@ if __name__ == '__main__':
     # Create CSS and JS files
     create_css(args.output_directory)
     create_js(args.output_directory)
-    
+
     # Generate website
     generate_website(args.output_directory, conn)
+    generate_network_visualization(args.output_directory, conn)
     
     # Close database connection
     conn.close()

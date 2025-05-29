@@ -112,6 +112,10 @@ These might or might not still work
 
 `uv run boards_website_generator.py`
 
+This command now also produces a `network.html` page and an accompanying
+`network_data.json` file. These visualise connections between companies
+that share directors using NetworkX for analysis and D3 for display.
+
 ## CIK to Ticker Extractor
 
 This tool extracts ticker information from SEC submission files and populates a
