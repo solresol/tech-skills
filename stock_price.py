@@ -47,7 +47,7 @@ def fetch_stock_price(conn, ticker: str, price_date, *, force: bool = False,
     )
     if data.empty:
         raise RuntimeError("No data returned for the given ticker and date")
-    close_price = float(data["Close"].iloc[0])
+    close_price = float(data["Close"].iat[0])
 
     if not dummy_run:
         if force:
