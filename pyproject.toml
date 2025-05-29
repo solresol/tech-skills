@@ -19,5 +19,5 @@ dependencies = [
     "scipy>=1.13.0",
     "matplotlib>=3.10.3",
     "seaborn>=0.13.2",
-    "SQLAlchemy>=2.0.29",
+    "sqlalchemy>=2.0.41"
 ]

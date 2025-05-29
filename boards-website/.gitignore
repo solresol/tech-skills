@@ -2,3 +2,6 @@
 *.css
 *.js
 network_data.json
+growth_violin.png
+num_regression.png
+prop_regression.png
