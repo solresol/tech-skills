@@ -10,6 +10,6 @@ uv run board_stock_analysis.py
 uv run boards_website_generator.py
 rsync -a boards-website/ merah:/var/www/vhosts/boards.industrial-linguistics.com/htdocs/
 
-uv run make_minified_dump.py
-gzip -9 -f techskills.sql
-rsync -a techskills.sql.gz merah:/var/www/vhosts/datadumps.ifost.org.au/htdocs/tech-skills/techskills.sql.gz
+#uv run make_minified_dump.py
+#gzip -9 -f techskills.sql
+#rsync -a techskills.sql.gz merah:/var/www/vhosts/datadumps.ifost.org.au/htdocs/tech-skills/techskills.sql.gz
