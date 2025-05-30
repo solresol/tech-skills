@@ -38,7 +38,27 @@ dbname=techskills_min
 useragent="example@example.com"
 EOC
 
+# Set up environment variables for convenient PostgreSQL access
+export PGHOST=localhost
+export PGHOSTNAME=localhost
+export PGPORT=5432
+export PGUSER=techskills
+export PGDATABASE=techskills
+
+# Persist them for future shells
+cat >> ~/.profile <<EOS
+export PGHOST=localhost
+export PGHOSTNAME=localhost
+export PGPORT=5432
+export PGUSER=techskills
+export PGDATABASE=techskills
+EOS
+
+# Configure passwordless access via .pgpass
+echo "localhost:5432:*:techskills:techskills" > ~/.pgpass
+chmod 600 ~/.pgpass
+
 wget -O techskills.sql.gz http://datadumps.ifost.org.au/tech-skills/techskills.sql.gz
 gunzip -f techskills.sql.gz
-psql -U techskills -d techskills -f techskills.sql
+psql -f techskills.sql
 rm techskills.sql
