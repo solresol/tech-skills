@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Create a minified SQL dump stripping html_doc_cache.content."""
+import argparse
+import configparser
+import subprocess
+import os
+
+
+def build_env(password):
+    env = os.environ.copy()
+    env["PGPASSWORD"] = password
+    return env
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Create minified database dump")
+    parser.add_argument("--config", default="db.conf", help="Config file with DB details")
+    parser.add_argument("--output", default="techskills.sql", help="Output SQL file")
+    args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+    config.read(args.config)
+
+    src = config["database"]
+    dst = config["minified"]
+
+    src_env = build_env(src["password"])
+    dst_env = build_env(dst["password"])
+
+    src_host = src.get("hostname", "localhost")
+    src_port = src.get("port", "5432")
+    dst_host = dst.get("hostname", "localhost")
+    dst_port = dst.get("port", "5432")
+
+    # 1. create the empty destination database
+    subprocess.run([
+        "createdb",
+        "-h", dst_host,
+        "-p", str(dst_port),
+        "-U", dst["user"],
+        dst["dbname"],
+    ], check=True, env=dst_env)
+
+    # 2. copy source database into destination
+    dump_cmd = [
+        "pg_dump",
+        "-h", src_host,
+        "-p", str(src_port),
+        "-U", src["user"],
+        src["dbname"],
+    ]
+    psql_cmd = [
+        "psql",
+        "-h", dst_host,
+        "-p", str(dst_port),
+        "-U", dst["user"],
+        dst["dbname"],
+    ]
+    dump_proc = subprocess.Popen(dump_cmd, stdout=subprocess.PIPE, env=src_env)
+    psql_proc = subprocess.Popen(psql_cmd, stdin=dump_proc.stdout, env=dst_env)
+    psql_proc.communicate()
+    dump_proc.wait()
+
+    # 3. remove large column contents
+    subprocess.run([
+        "psql",
+        "-h", dst_host,
+        "-p", str(dst_port),
+        "-U", dst["user"],
+        dst["dbname"],
+        "-c",
+        "UPDATE html_doc_cache SET content = NULL;",
+    ], check=True, env=dst_env)
+
+    # 4. dump the sanitized database
+    with open(args.output, "wb") as out:
+        subprocess.run([
+            "pg_dump",
+            "--no-owner",
+            "--no-privileges",
+            "-h", dst_host,
+            "-p", str(dst_port),
+            "-U", dst["user"],
+            dst["dbname"],
+        ], check=True, stdout=out, env=dst_env)
+
+    # 5. drop the temporary database
+    subprocess.run([
+        "dropdb",
+        "-h", dst_host,
+        "-p", str(dst_port),
+        "-U", dst["user"],
+        dst["dbname"],
+    ], check=True, env=dst_env)
+
+
+if __name__ == "__main__":
+    main()
