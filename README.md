@@ -38,9 +38,17 @@ hostname=mydb-server
 port=5432
 dbname=tech-skills
 
+[minified]
+user=foo
+password=hunter2
+hostname=mydb-server
+port=5432
+dbname=techskills_min
+
 [edgar]
 useragent="Greg Smith greg@example.com"
 ```
+The `[minified]` section defines a temporary database used for creating sanitized dumps.
 
 9. Run `uv run load_listed_company_submissions.py --progress`
 
@@ -273,3 +281,14 @@ WHERE dc.committee_name ILIKE '%audit%';
 The schema creates several tables including `director_extract_batches`,
 `director_compensation`, `director_details`, and `director_committees`, plus a
 view `director_compensation_summary` for easy access to combined data.
+
+## Sandbox Setup
+
+To create a sandbox environment with a populated database you can run:
+
+```bash
+./envsetup.sh
+```
+
+This installs PostgreSQL, downloads the Python dependencies via `uv run uvbootstrap.py`, creates a local `techskills` database and user, writes a `db.conf` file (including a `[minified]` section used for generating sanitized dumps), and restores the latest minified dump from <http://datadumps.ifost.org.au/tech-skills/techskills.sql.gz>.
+
