@@ -4,6 +4,15 @@ set -e
 sudo apt update
 sudo apt install -y postgresql
 
+# Ensure PostgreSQL is running (some systems don't start it automatically)
+if ! pg_isready -q; then
+    if command -v service >/dev/null 2>&1; then
+        sudo service postgresql start
+    elif command -v systemctl >/dev/null 2>&1; then
+        sudo systemctl start postgresql
+    fi
+fi
+
 uv run uvbootstrap.py
 
 # Create database and user if they don't already exist
