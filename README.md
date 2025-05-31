@@ -150,8 +150,8 @@ Options:
 - `--verbose`: Show detailed logging information
 - `--only-cikcode`: Process only one specific CIK code (for debugging)
 
-The schema also creates a view `company_ticker_info` and a helper function
-`get_company_by_ticker` for easier querying.
+The schema also creates a view `company_ticker_info` (now including a `sector`
+column) and a helper function `get_company_by_ticker` for easier querying.
 
 ### Usage Examples
 ```sql
@@ -196,6 +196,18 @@ To populate prices for many processed DEF 14A filings in bulk, run:
 Any ticker/date combination that can't be retrieved is recorded in the
 `stock_price_failures` table. A normal run skips these failures. Passing
 `--force` removes a prior failure entry and attempts the download again.
+
+### Fetching Sector Information
+
+You can also use `yfinance` to look up the industry sector for a ticker and
+store it in the `ticker_sector` table. Run:
+
+```bash
+./fetch_sector.py AAPL
+```
+
+Use `--force` to refresh an existing entry or `--dummy-run` to skip inserting
+into the database.
 
 ## Director Compensation Extraction Tool
 

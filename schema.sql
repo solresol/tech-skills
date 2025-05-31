@@ -280,6 +280,12 @@ CREATE TABLE IF NOT EXISTS stock_price_failures (
     PRIMARY KEY (ticker, price_date)
 );
 
+-- Store sector information for each ticker
+CREATE TABLE IF NOT EXISTS ticker_sector (
+    ticker TEXT PRIMARY KEY,
+    sector TEXT
+);
+
 -- Schema for the CIK to ticker mapping
 -- Create a new table for storing cikcode to ticker mappings
 CREATE TABLE IF NOT EXISTS cik_to_ticker (
@@ -299,18 +305,22 @@ CREATE OR REPLACE VIEW company_ticker_info AS
 SELECT
     c.cikcode,
     c.company_name,
-    t.ticker
+    t.ticker,
+    s.sector
 FROM
     cik2name c
 JOIN
-    cik_to_ticker t ON c.cikcode = t.cikcode;
+    cik_to_ticker t ON c.cikcode = t.cikcode
+LEFT JOIN
+    ticker_sector s ON t.ticker = s.ticker;
 
 -- Create a function to find a company by ticker
 CREATE OR REPLACE FUNCTION get_company_by_ticker(ticker_symbol VARCHAR)
 RETURNS TABLE (
     cikcode INT,
     company_name VARCHAR,
-    ticker VARCHAR
+    ticker VARCHAR,
+    sector VARCHAR
 ) AS $$
 BEGIN
     RETURN QUERY
