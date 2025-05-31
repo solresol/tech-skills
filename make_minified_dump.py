@@ -84,6 +84,15 @@ def main():
         "-c",
         "UPDATE html_doc_cache SET content = NULL;",
     ], check=True, env=dst_env)
+    subprocess.run([
+        "psql",
+        "-h", dst_host,
+        "-p", str(dst_port),
+        "-U", dst["user"],
+        dst["dbname"],
+        "-c",
+        "delete from filings where form not like 'D%14A';",
+    ], check=True, env=dst_env)
 
     # 5. dump the sanitized database
     with open(args.output, "wb") as out:
