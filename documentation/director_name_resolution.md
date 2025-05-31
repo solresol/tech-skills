@@ -59,3 +59,14 @@ EDGAR itself does not provide a persistent director ID. BoardEx and similar data
 - Track history of name changes (e.g. marriage) by analysing biography text.
 - Periodically retrain the classifier as more labelled data becomes available.
 
+### Provided Tools
+Two helper programs implement the above process:
+
+- `train_name_matcher.py` trains a logistic regression model from a CSV file of
+  labelled name pairs (`name1,name2,label`). The resulting model is saved to a
+  file for later use.
+- `resolve_director_names.py` applies a trained model to names extracted in the
+  `director_mentions` view and populates the new `directors` and
+  `director_name_aliases` tables. It falls back to simple normalisation when no
+  model is supplied.
+

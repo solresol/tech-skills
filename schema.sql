@@ -264,6 +264,24 @@ SELECT
 FROM
     director_details d;
 
+-- Canonical list of directors resolved from variant names
+CREATE TABLE IF NOT EXISTS directors (
+    id SERIAL PRIMARY KEY,
+    canonical_name TEXT UNIQUE NOT NULL,
+    biography TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_directors_canonical ON directors(canonical_name);
+
+-- Observed name aliases for each director
+CREATE TABLE IF NOT EXISTS director_name_aliases (
+    id SERIAL PRIMARY KEY,
+    director_id INT REFERENCES directors(id),
+    alias TEXT NOT NULL,
+    source TEXT,
+    UNIQUE(director_id, alias)
+);
+CREATE INDEX IF NOT EXISTS idx_director_name_alias ON director_name_aliases(alias);
+
 -- Table to store historical closing prices for U.S. stocks
 CREATE TABLE IF NOT EXISTS stock_prices (
     ticker TEXT NOT NULL,
