@@ -66,7 +66,10 @@ done
 
 11.  Schedule `morningcron.sh`
 
-That will run `uv run ask_openai_batch.py --stop-after 100`
+That will run `uv run ask_openai_batch.py --stop-after 100`,
+`uv run extract_director_compensation.py --stop-after 110` and
+`uv run fetch_all_sectors.py --stop-after 100 --progress` to gradually
+populate the sector table.
 
 I haven't figured out how to make sure the batches aren't too big or too small. I'm just
 winging it by finding a number that seems reasonable.
@@ -199,8 +202,8 @@ Any ticker/date combination that can't be retrieved is recorded in the
 
 ### Fetching Sector Information
 
-You can also use `yfinance` to look up the industry sector for a ticker and
-store it in the `ticker_sector` table. Run:
+You can use `yfinance` to look up the industry sector for a ticker and store it
+in the `ticker_sector` table. Run:
 
 ```bash
 ./fetch_sector.py AAPL
@@ -208,6 +211,13 @@ store it in the `ticker_sector` table. Run:
 
 Use `--force` to refresh an existing entry or `--dummy-run` to skip inserting
 into the database.
+
+To populate sectors for every ticker in `cik_to_ticker`, run `fetch_all_sectors.py`.
+It supports `--stop-after` and `--progress` to throttle requests:
+
+```bash
+./fetch_all_sectors.py --stop-after 100 --progress
+```
 
 ## Director Compensation Extraction Tool
 

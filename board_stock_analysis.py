@@ -21,6 +21,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
+def format_p(value: float) -> str:
+    """Return a nicely formatted p-value."""
+    if pd.isna(value):
+        return "nan"
+    return f"{value:.4f}" if value >= 1e-4 else f"{value:.2e}"
+
+
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang='en'>
 <head>
@@ -35,22 +42,31 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class='container'>
         <h2>Mann-Whitney U Test</h2>
         <p>U statistic: {{ u_stat | round(2) }}</p>
-        <p>p-value: {{ p_value | round(4) }}</p>
+        <p>p-value: {{ p_value }}</p>
         <img src='growth_violin.png' alt='Growth distribution by board type'>
     </div>
     <div class='container'>
         <h2>Regression: Number of Software Directors</h2>
         <p>y = {{ slope_num | round(4) }} * x + {{ intercept_num | round(4) }}</p>
         <p>R<sup>2</sup>: {{ r2_num | round(4) }}</p>
-        <p>p-value: {{ p_num | round(4) }}</p>
+        <p>p-value: {{ p_num }}</p>
         <img src='num_regression.png' alt='Regression number of software directors'>
     </div>
     <div class='container'>
         <h2>Regression: Proportion of Software Directors</h2>
         <p>y = {{ slope_prop | round(4) }} * x + {{ intercept_prop | round(4) }}</p>
         <p>R<sup>2</sup>: {{ r2_prop | round(4) }}</p>
-        <p>p-value: {{ p_prop | round(4) }}</p>
+        <p>p-value: {{ p_prop }}</p>
         <img src='prop_regression.png' alt='Regression proportion of software directors'>
+    </div>
+    <div class='container'>
+        <h2>Sector Results</h2>
+        <table>
+            <tr><th>Sector</th><th>U statistic</th><th>p-value</th></tr>
+            {% for row in sector_stats %}
+            <tr><td>{{ row.sector or 'Unknown' }}</td><td>{{ row.u_stat|round(2) }}</td><td>{{ row.p_str }}</td></tr>
+            {% endfor %}
+        </table>
     </div>
 </body>
 </html>"""
@@ -89,16 +105,17 @@ def main() -> None:
              GROUP BY cikcode, accessionnumber
         ),
         filing_prices AS (
-            SELECT f.cikcode, f.accessionnumber, f.filingdate, sp.close_price
+            SELECT f.cikcode, f.accessionnumber, f.filingdate, sp.close_price, t.ticker
               FROM filings f
               JOIN cik_to_ticker t ON f.cikcode = t.cikcode
               JOIN stock_prices sp ON sp.ticker = t.ticker AND sp.price_date = f.filingdate
              WHERE f.form = 'DEF 14A'
         )
         SELECT p.cikcode, p.accessionnumber, p.filingdate, p.close_price,
-               bc.director_count, bc.software_count
+               bc.director_count, bc.software_count, ts.sector
           FROM filing_prices p
           JOIN board_counts bc USING (cikcode, accessionnumber)
+          LEFT JOIN ticker_sector ts ON p.ticker = ts.ticker
          ORDER BY p.cikcode, p.filingdate
     """
     if sqlalchemy is not None:
@@ -130,6 +147,7 @@ def main() -> None:
                     "has_software": last.software_count > 0,
                     "num_software": last.software_count,
                     "prop_software": prop,
+                    "sector": row.sector,
                 }
             )
         prev[key] = row
@@ -144,6 +162,7 @@ def main() -> None:
         u_stat, p_val = stat_res.statistic, stat_res.pvalue
     else:
         u_stat, p_val = float("nan"), float("nan")
+    p_val_str = format_p(p_val)
 
     y = np.asarray(res_df["growth"])
 
@@ -152,12 +171,30 @@ def main() -> None:
     intercept_num = lr_num.intercept
     r2_num = lr_num.rvalue**2
     p_num = lr_num.pvalue
+    p_num_str = format_p(p_num)
 
     lr_prop = linregress(res_df["prop_software"], y)
     slope_prop = lr_prop.slope
     intercept_prop = lr_prop.intercept
     r2_prop = lr_prop.rvalue**2
     p_prop = lr_prop.pvalue
+    p_prop_str = format_p(p_prop)
+
+    sector_stats = []
+    for sector, gdf in res_df.groupby("sector"):
+        ws = gdf[gdf["has_software"]]["growth"]
+        wo = gdf[~gdf["has_software"]]["growth"]
+        if ws.empty or wo.empty:
+            continue
+        stat = mannwhitneyu(ws, wo, alternative="two-sided")
+        sector_stats.append(
+            {
+                "sector": sector,
+                "u_stat": stat.statistic,
+                "p_value": stat.pvalue,
+                "p_str": format_p(stat.pvalue),
+            }
+        )
 
     # Generate violin plot for growth distributions
     fig, ax = plt.subplots()
@@ -188,15 +225,16 @@ def main() -> None:
     template = jinja2.Template(HTML_TEMPLATE)
     html = template.render(
         u_stat=u_stat,
-        p_value=p_val,
+        p_value=p_val_str,
         slope_num=slope_num,
         intercept_num=intercept_num,
         r2_num=r2_num,
-        p_num=p_num,
+        p_num=p_num_str,
         slope_prop=slope_prop,
         intercept_prop=intercept_prop,
         r2_prop=r2_prop,
-        p_prop=p_prop,
+        p_prop=p_prop_str,
+        sector_stats=sector_stats,
     )
 
     with open(args.output_file, "w") as fh:
