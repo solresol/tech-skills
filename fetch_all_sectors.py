@@ -58,7 +58,7 @@ def main() -> None:
 
     count = 0
     for ticker in iterator:
-        if args.stop_after and count >= args.stop_after:
+        if args.stop_after is not None and count >= args.stop_after:
             break
         try:
             fetch_sector(
@@ -69,8 +69,8 @@ def main() -> None:
             )
         except Exception as exc:  # pylint: disable=broad-except
             logging.error("Failed to fetch sector for %s: %s", ticker, exc)
-        else:
-            count += 1
+            conn.rollback()
+        count += 1
 
     conn.close()
 
