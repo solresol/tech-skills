@@ -30,8 +30,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch sectors for all tickers")
     parser.add_argument("--database-config", default="db.conf",
                         help="Parameters to connect to the database")
-    parser.add_argument("--schema-file", default="schema.sql",
-                        help="SQL schema file to ensure tables exist")
     parser.add_argument("--stop-after", type=int,
                         help="Limit number of tickers processed")
     parser.add_argument("--progress", action="store_true",
@@ -65,7 +63,6 @@ def main() -> None:
                 conn,
                 ticker,
                 force=args.force,
-                schema_file=args.schema_file,
             )
         except Exception as exc:  # pylint: disable=broad-except
             logging.error("Failed to fetch sector for %s: %s", ticker, exc)

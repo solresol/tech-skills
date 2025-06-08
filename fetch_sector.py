@@ -8,7 +8,7 @@ import yfinance as yf
 
 
 def fetch_sector(conn, ticker: str, *, force: bool = False,
-                 schema_file: str = "schema.sql", dummy_run: bool = False) -> str:
+                 dummy_run: bool = False) -> str:
     """Fetch the sector for ``ticker`` and store it in the ``ticker_sector`` table.
 
     When ``force`` is False an existing value is returned without contacting the
@@ -17,12 +17,13 @@ def fetch_sector(conn, ticker: str, *, force: bool = False,
 
     ticker = ticker.upper()
     cur = conn.cursor()
-
-    # Ensure table exists
-    with open(schema_file, "r", encoding="utf-8") as f:
-        cur.execute(f.read())
-        conn.commit()
-
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS ticker_sector ("
+        " ticker TEXT PRIMARY KEY,"
+        " sector TEXT"
+        ")"
+    )
+    conn.commit()
     if not force:
         cur.execute(
             "SELECT sector FROM ticker_sector WHERE ticker=%s",
@@ -55,8 +56,6 @@ def main() -> None:
     parser.add_argument("ticker", help="Stock ticker symbol, e.g. AAPL")
     parser.add_argument("--database-config", default="db.conf",
                         help="Parameters to connect to the database")
-    parser.add_argument("--schema-file", default="schema.sql",
-                        help="SQL schema file to ensure tables exist")
     parser.add_argument("--force", action="store_true",
                         help="Refetch sector even if already stored")
     parser.add_argument("--dummy-run", action="store_true",
@@ -68,7 +67,6 @@ def main() -> None:
         conn,
         args.ticker,
         force=args.force,
-        schema_file=args.schema_file,
         dummy_run=args.dummy_run,
     )
     print(f"{args.ticker.upper()} sector: {sector}")
