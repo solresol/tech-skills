@@ -203,7 +203,8 @@ Any ticker/date combination that can't be retrieved is recorded in the
 ### Fetching Sector Information
 
 You can use `yfinance` to look up the industry sector for a ticker and store it
-in the `ticker_sector` table. Run:
+in the `ticker_sector` table. The script automatically creates the table if it
+is missing. Run:
 
 ```bash
 ./fetch_sector.py AAPL
