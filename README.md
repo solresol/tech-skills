@@ -68,7 +68,7 @@ done
 
 That will run `uv run ask_openai_batch.py --stop-after 100`,
 `uv run extract_director_compensation.py --stop-after 110` and
-`uv run fetch_all_sectors.py --stop-after 100 --progress` to gradually
+`uv run fetch_all_sectors.py --stop-after 500 --progress` to gradually
 populate the sector table.
 
 I haven't figured out how to make sure the batches aren't too big or too small. I'm just
@@ -217,7 +217,7 @@ To populate sectors for every ticker in `cik_to_ticker`, run `fetch_all_sectors.
 It supports `--stop-after` and `--progress` to throttle requests:
 
 ```bash
-./fetch_all_sectors.py --stop-after 100 --progress
+./fetch_all_sectors.py --stop-after 500 --progress
 ```
 
 ## Director Compensation Extraction Tool
