@@ -8,5 +8,14 @@ INSERT INTO ticker_sector (ticker, sector) VALUES
     ('ABLLL', 'Financial Services'),
     ('ABLLW', 'Financial Services'),
     ('ACHR-WT', 'Industrials'),
-    ('ACLEW', 'Healthcare')
+    ('ACLEW', 'Healthcare'),
+    ('ADZCF', 'Financial Services'),
+    ('AEAEW', 'Financial Services'),
+    ('AEFC', 'Financial Services'),
+    ('AERGP', 'Industrials'),
+    ('AFBL', 'Financial Services'),
+    ('AFGB', 'Financial Services'),
+    ('AFGC', 'Financial Services'),
+    ('AFGD', 'Financial Services'),
+    ('AFGE', 'Financial Services')
 ON CONFLICT DO NOTHING;
