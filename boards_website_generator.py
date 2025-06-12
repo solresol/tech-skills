@@ -582,7 +582,10 @@ def generate_network_visualization(output_dir, conn):
 
     for component in nx.connected_components(G):
         sub = G.subgraph(component)
-        centrality = nx.eigenvector_centrality(sub)
+        try:
+            centrality = nx.eigenvector_centrality(sub, max_iter=1000)
+        except nx.PowerIterationFailedConvergence:
+            centrality = nx.eigenvector_centrality_numpy(sub)
         for node, score in centrality.items():
             G.nodes[node]["centrality"] = score
 
