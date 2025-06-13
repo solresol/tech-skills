@@ -70,7 +70,6 @@ INSERT INTO ticker_sector (ticker, sector) VALUES
     ('ASCRF', 'Financial Services'),
     ('ASCWF', 'Financial Services'),
     ('ASPCR', 'Financial Services'),
-ON CONFLICT DO NOTHING;
     ('ASTL', 'Financial Services'),
     ('ASTLW', 'Financial Services'),
     ('ASTS', 'Financial Services'),
@@ -538,5 +537,5 @@ ON CONFLICT DO NOTHING;
     ('BK-PK', 'Financial Services'),
     ('BKR', 'Financial Services'),
     ('BKRRF', 'Financial Services'),
-    ('BKSC', 'Financial Services'),
+    ('BKSC', 'Financial Services')
 ON CONFLICT DO NOTHING;
