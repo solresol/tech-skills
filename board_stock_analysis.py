@@ -62,9 +62,29 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class='container'>
         <h2>Sector Results</h2>
         <table>
-            <tr><th>Sector</th><th>U statistic</th><th>p-value</th></tr>
+            <tr>
+                <th>Sector</th>
+                <th>U statistic</th>
+                <th>U p-value</th>
+                <th>Slope Num</th>
+                <th>R² Num</th>
+                <th>p Num</th>
+                <th>Slope Prop</th>
+                <th>R² Prop</th>
+                <th>p Prop</th>
+            </tr>
             {% for row in sector_stats %}
-            <tr><td>{{ row.sector or 'Unknown' }}</td><td>{{ row.u_stat|round(2) }}</td><td>{{ row.p_str }}</td></tr>
+            <tr>
+                <td>{{ row.sector or 'Unknown' }}</td>
+                <td>{{ row.u_stat|round(2) }}</td>
+                <td>{{ row.p_str }}</td>
+                <td>{{ row.slope_num|round(4) }}</td>
+                <td>{{ row.r2_num|round(4) }}</td>
+                <td>{{ row.p_num_str }}</td>
+                <td>{{ row.slope_prop|round(4) }}</td>
+                <td>{{ row.r2_prop|round(4) }}</td>
+                <td>{{ row.p_prop_str }}</td>
+            </tr>
             {% endfor %}
         </table>
     </div>
@@ -187,12 +207,26 @@ def main() -> None:
         if ws.empty or wo.empty:
             continue
         stat = mannwhitneyu(ws, wo, alternative="two-sided")
+
+        lr_num_s = linregress(gdf["num_software"], gdf["growth"])
+        lr_prop_s = linregress(gdf["prop_software"], gdf["growth"])
+
         sector_stats.append(
             {
                 "sector": sector,
                 "u_stat": stat.statistic,
                 "p_value": stat.pvalue,
                 "p_str": format_p(stat.pvalue),
+                "slope_num": lr_num_s.slope,
+                "intercept_num": lr_num_s.intercept,
+                "r2_num": lr_num_s.rvalue**2,
+                "p_num": lr_num_s.pvalue,
+                "p_num_str": format_p(lr_num_s.pvalue),
+                "slope_prop": lr_prop_s.slope,
+                "intercept_prop": lr_prop_s.intercept,
+                "r2_prop": lr_prop_s.rvalue**2,
+                "p_prop": lr_prop_s.pvalue,
+                "p_prop_str": format_p(lr_prop_s.pvalue),
             }
         )
 
