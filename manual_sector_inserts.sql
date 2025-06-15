@@ -595,7 +595,7 @@ INSERT INTO ticker_sector (ticker, sector) VALUES
     ('CCLFX', 'Financial Services'),
     ('CCTC', 'Financial Services'),
     ('CCZ', 'Financial Services'),
-    ('CDAWF', 'Financial Services')
+    ('CDAWF', 'Financial Services'),
     ('C-PN', 'Financial Services'),
     ('CEDAX', 'Financial Services'),
     ('CEF', 'Financial Services'),
@@ -648,5 +648,5 @@ INSERT INTO ticker_sector (ticker, sector) VALUES
     ('CRE', 'Financial Services'),
     ('CRSLF', 'Financial Services'),
     ('CRTD', 'Financial Services'),
-    ('CRTDW', 'Financial Services'),
+    ('CRTDW', 'Financial Services')
 ON CONFLICT DO NOTHING;
