@@ -1,11 +1,13 @@
+import os
 import subprocess
 import sys
 
 
 def test_fetch_sector_aapl():
+    env = dict(**os.environ, SANDBOX_HAS_DATABASE='no')
     result = subprocess.run(
         [sys.executable, 'fetch_sector.py', 'AAPL', '--dummy-run'],
-        capture_output=True, text=True
+        capture_output=True, text=True, env=env
     )
     print(result.stdout)
     print(result.stderr)

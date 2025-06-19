@@ -4,44 +4,23 @@
 Generally you will use it as a module, and call the connect() function"""
 
 import configparser
-import importlib
 import os
-import pathlib
-import sys
 
-import psycopg2
-
-
-def _import_real_psycopg2():
-    """Import the system installation of psycopg2, bypassing the local stub."""
-    repo_root = pathlib.Path(__file__).resolve().parent
-    removed = []
-    for entry in ("", str(repo_root)):
-        if entry in sys.path:
-            sys.path.remove(entry)
-            removed.append(entry)
-    try:
-        return importlib.import_module("psycopg2")
-    finally:
-        for entry in reversed(removed):
-            sys.path.insert(0, entry)
+import mock_psycopg2
 
 def connect(config_filename):
     """Return a PostgreSQL connection.
 
-    The dummy ``psycopg2`` module ships with this repo for use in sandboxes
-    without a database. If ``SANDBOX_HAS_DATABASE`` is set to ``no`` we use the
-    dummy module; otherwise we try to load the real library and fall back to the
-    dummy on failure.
+    The ``mock_psycopg2`` module ships with this repo for use in sandboxes
+    without a database. If ``SANDBOX_HAS_DATABASE`` is set to ``no`` we
+    immediately return a dummy connection from ``mock_psycopg2``.
     """
 
+
     if os.environ.get("SANDBOX_HAS_DATABASE") == "no":
-        psycopg = psycopg2
-    else:
-        try:
-            psycopg = _import_real_psycopg2()
-        except ImportError:
-            psycopg = psycopg2
+        return mock_psycopg2.connect()
+
+    import psycopg2
 
     config = configparser.ConfigParser()
     config.read(config_filename)
@@ -51,7 +30,7 @@ def connect(config_filename):
     host = config['database']['hostname']
     port = config['database'].get('port', 5432)
 
-    conn = psycopg.connect(
+    conn = psycopg2.connect(
         f'dbname={dbname} user={user} password={password} host={host} port={port}'
     )
     return conn
