@@ -3,8 +3,16 @@
 
 import argparse
 
+import os
 import pgconnect
-import yfinance as yf
+
+if os.getenv("USE_YFINANCE_STUB") == "1":
+    import yfinance_stub as yf
+else:
+    try:
+        import yfinance as yf
+    except Exception:  # pragma: no cover - fallback when yfinance unavailable
+        import yfinance_stub as yf
 
 
 def fetch_sector(conn, ticker: str, *, force: bool = False,
