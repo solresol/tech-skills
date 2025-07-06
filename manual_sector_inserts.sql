@@ -1360,5 +1360,17 @@ INSERT INTO ticker_sector (ticker, sector) VALUES
     ('YDDL', 'Financial Services'),
     ('YDES', 'Financial Services'),
     ('YHNAR', 'Financial Services'),
-    ('YMAT', 'Financial Services')
+    ('YMAT', 'Financial Services'),
+    ('YOUL', 'Financial Services'),
+    ('YOTAR', 'Financial Services'),
+    ('YOTAW', 'Financial Services'),
+    ('YY', 'Financial Services'),
+    ('ZAPPW', 'Financial Services'),
+    ('ZCSH', 'Financial Services'),
+    ('ZGM', 'Financial Services'),
+    ('ZLME', 'Financial Services'),
+    ('ZNKUF', 'Financial Services'),
+    ('ZRCN', 'Financial Services'),
+    ('ZSL', 'Financial Services'),
+    ('ZTR', 'Financial Services')
 ON CONFLICT DO NOTHING;
