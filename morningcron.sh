@@ -3,7 +3,7 @@
 cd $(dirname $0)
 
 # We might as well use the latest version
-git pull
+git pull -q
 
 # This is the core of it
 uv run ask_openai_bulk.py --stop-after 100
