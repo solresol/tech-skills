@@ -229,6 +229,51 @@ if args.dry_run:
     conn.rollback()
     sys.exit(0)
 
+
+def validate_batch_requests(batch_file_path):
+    """Raise an error if any requests in the batch use an unexpected endpoint."""
+
+    problems = []
+
+    with open(batch_file_path) as batch_file:
+        for line_number, line in enumerate(batch_file, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                payload = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                problems.append(
+                    f"Line {line_number}: could not decode JSON ({exc})"
+                )
+                continue
+
+            url = payload.get("url")
+            if not url:
+                problems.append(
+                    f"Line {line_number}: missing URL in payload {payload!r}"
+                )
+                continue
+
+            if url.startswith("/v1/"):
+                problems.append(
+                    f"Line {line_number}: unexpected endpoint '{url}' for custom_id"
+                    f" {payload.get('custom_id')!r}. This will become '/v1{url}' when"
+                    " submitted and cause OpenAI to reject the request."
+                )
+
+    if problems:
+        problem_report = "\n".join(problems)
+        raise SystemExit(
+            "Refusing to submit batch file because potential endpoint issues were"
+            f" detected:\n{problem_report}\n"
+            "If '/v1/' is appearing in the job file unexpectedly, investigate"
+            " where that value is being introduced before re-running the batch."
+        )
+
+
+validate_batch_requests(args.batch_file)
+
 # Submit the batch to OpenAI
 api_key = open(os.path.expanduser(args.openai_key_file)).read().strip()
 client = openai.OpenAI(api_key=api_key)
