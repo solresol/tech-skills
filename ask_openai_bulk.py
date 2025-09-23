@@ -208,7 +208,7 @@ For each director, clearly state:
     batch_text = {
         "custom_id": url,
         "method": "POST",
-        "url": "/chat/completions",
+        "url": "/v1/chat/completions",
         "body": {
             "model": "gpt-4.1-mini",
             "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
@@ -228,6 +228,9 @@ For each director, clearly state:
 if args.dry_run:
     conn.rollback()
     sys.exit(0)
+
+
+EXPECTED_BATCH_ENDPOINT = "/v1/chat/completions"
 
 
 def validate_batch_requests(batch_file_path):
@@ -255,11 +258,10 @@ def validate_batch_requests(batch_file_path):
                 )
                 continue
 
-            if url.startswith("/v1/"):
+            if url != EXPECTED_BATCH_ENDPOINT:
                 problems.append(
                     f"Line {line_number}: unexpected endpoint '{url}' for custom_id"
-                    f" {payload.get('custom_id')!r}. This will become '/v1{url}' when"
-                    " submitted and cause OpenAI to reject the request."
+                    f" {payload.get('custom_id')!r}. Expected {EXPECTED_BATCH_ENDPOINT!r}."
                 )
 
     if problems:
@@ -267,8 +269,7 @@ def validate_batch_requests(batch_file_path):
         raise SystemExit(
             "Refusing to submit batch file because potential endpoint issues were"
             f" detected:\n{problem_report}\n"
-            "If '/v1/' is appearing in the job file unexpectedly, investigate"
-            " where that value is being introduced before re-running the batch."
+            f"Expected every request to target {EXPECTED_BATCH_ENDPOINT!r}."
         )
 
 
@@ -286,7 +287,7 @@ batch_input_file = client.files.create(
 
 result = client.batches.create(
     input_file_id=batch_input_file.id,
-    endpoint="/chat/completions",
+    endpoint="/v1/chat/completions",
     completion_window="24h",
     metadata={
         "description": f"techskills batch {batch_id}",
