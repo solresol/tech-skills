@@ -74,13 +74,45 @@ for local_batch_id, openai_batch_id in cursor:
     
     for row in iterator:
         record = json.loads(row)
+
         if record['response']['status_code'] != 200:
+            url = record['custom_id']
+            lookup_cursor.execute(
+                "select cikcode, accessionNumber, filingDate from filings where document_storage_url = %s",
+                [url],
+            )
+            filing_info = lookup_cursor.fetchone()
+
+            request_id = record['response'].get('request_id')
+            error_message = None
+            body = record['response'].get('body')
+            if isinstance(body, dict):
+                error = body.get('error')
+                if isinstance(error, dict):
+                    error_message = error.get('message')
+
+            if filing_info:
+                cikcode, accession_number, filing_date = filing_info
+                sys.stderr.write(
+                    f"Failed to download {url} (CIK {cikcode}, accession {accession_number}, filed {filing_date})"
+                )
+            else:
+                sys.stderr.write(f"Failed to download {url}")
+
+            if request_id:
+                sys.stderr.write(f" request_id={request_id}")
+            if error_message:
+                sys.stderr.write(f": {error_message}")
+            sys.stderr.write("\n")
             continue
-        
+
         # Get the filename (which was used as the custom_id)
         url = record['custom_id']
 
-        lookup_cursor.execute("select cikcode, accessionNumber from filings where document_storage_url = %s", [url])
+        lookup_cursor.execute(
+            "select cikcode, accessionNumber from filings where document_storage_url = %s",
+            [url],
+        )
         cikcode, accession_number = lookup_cursor.fetchone()
         # Just assume it works. Unless OpenAI makes something up, we're just getting back something we gave it
 
