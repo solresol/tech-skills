@@ -247,7 +247,7 @@ If any information is not available for a director, use appropriate default valu
     batch_text = {
         "custom_id": url,
         "method": "POST",
-        "url": "/v1/chat/completions",
+        "url": "/chat/completions",
         "body": {
             "model": "gpt-4.1-mini",
             "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
