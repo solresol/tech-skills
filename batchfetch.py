@@ -64,8 +64,14 @@ for local_batch_id, openai_batch_id in cursor:
     if openai_result.status != 'completed' and openai_result.status != 'expired':
         continue
     if openai_result.error_file_id is not None:
-        error_file_response = client.files.content(openai_result.error_file_id)
-        sys.stderr.write(error_file_response.text)
+        try:
+            error_file_response = client.files.content(openai_result.error_file_id)
+            sys.stderr.write(error_file_response.text)
+        except openai.NotFoundError:
+            logging.warning(
+                "OpenAI returned error_file_id %s but the file was unavailable (likely expired)",
+                openai_result.error_file_id,
+            )
     if openai_result.output_file_id is None:
         continue
     
