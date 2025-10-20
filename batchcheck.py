@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 import sys
 import openai
@@ -81,6 +82,44 @@ while True:
             print("      Errors: ")
             for err in openai_result.errors.data:
                 print(f"         - {err.code} on line {err.line}: {err.message}")
+
+        if openai_result.error_file_id:
+            try:
+                error_file_response = client.files.content(openai_result.error_file_id)
+            except openai.NotFoundError:
+                print(
+                    f"      Error file {openai_result.error_file_id} was unavailable (likely expired)"
+                )
+            else:
+                print("      Error file contents:")
+                for line in error_file_response.text.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError:
+                        print(f"         - {line}")
+                        continue
+
+                    custom_id = record.get("custom_id")
+                    status_code = record.get("status_code")
+                    error = record.get("error")
+                    if isinstance(error, dict):
+                        error_message = error.get("message") or json.dumps(error, ensure_ascii=False)
+                    else:
+                        error_message = error
+                    parts = ["         -"]
+                    if custom_id is not None:
+                        parts.append(f"custom_id={custom_id}")
+                    if status_code is not None:
+                        parts.append(f"status_code={status_code}")
+                    if error_message:
+                        parts.append(f"error={error_message}")
+                    additional = record.get("message")
+                    if additional and additional != error_message:
+                        parts.append(f"message={additional}")
+                    print(" ".join(parts))
         
         if openai_result.request_counts:
             print(f"       Progress: {openai_result.request_counts.completed}/{openai_result.request_counts.total}")
