@@ -8,6 +8,8 @@ import openai
 import pgconnect
 import time
 
+NO_WORK_EXIT_CODE = 3
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
                     default="db.conf",
@@ -134,4 +136,4 @@ while True:
 if work_to_be_done:
     sys.exit(0)
 else:
-    sys.exit(1)
+    sys.exit(NO_WORK_EXIT_CODE)
