@@ -13,6 +13,7 @@ LOG_DIR="${SCRIPT_DIR}/logs"
 mkdir -p "${LOG_DIR}"
 RUN_TIMESTAMP="$(date +%Y%m%dT%H%M%S)"
 LOG_FILE="${LOG_DIR}/hourlycron_${RUN_TIMESTAMP}.log"
+NO_WORK_EXIT_CODE=3
 
 exec 3>&1
 exec >"${LOG_FILE}" 2>&1
@@ -38,24 +39,24 @@ BATCHCHECK_RESULT="unknown"
 do_batchcheck() {
     local start
     start=$(date +%s)
-    log "START  uv run batchcheck.py"
+    log "START  uv run batchcheck.py --no-work-exit-code ${NO_WORK_EXIT_CODE}"
 
-    if uv run batchcheck.py; then
+    if uv run batchcheck.py --no-work-exit-code "${NO_WORK_EXIT_CODE}"; then
         local elapsed
         elapsed=$(( $(date +%s) - start ))
-        log "SUCCESS uv run batchcheck.py (took ${elapsed}s)"
+        log "SUCCESS uv run batchcheck.py --no-work-exit-code ${NO_WORK_EXIT_CODE} (took ${elapsed}s)"
         BATCHCHECK_RESULT="completed"
         return 0
     else
         local status=$?
         local elapsed
         elapsed=$(( $(date +%s) - start ))
-        if [ "${status}" -eq 1 ]; then
-            log "INFO    uv run batchcheck.py reported no completed batches yet (exit 1, took ${elapsed}s)"
+        if [ "${status}" -eq "${NO_WORK_EXIT_CODE}" ]; then
+            log "INFO    uv run batchcheck.py reported no completed batches yet (exit ${NO_WORK_EXIT_CODE}, took ${elapsed}s)"
             BATCHCHECK_RESULT="pending"
             return 0
         else
-            log "FAILURE uv run batchcheck.py (exit ${status}, took ${elapsed}s)"
+            log "FAILURE uv run batchcheck.py --no-work-exit-code ${NO_WORK_EXIT_CODE} (exit ${status}, took ${elapsed}s)"
             BATCHCHECK_RESULT="error"
             return ${status}
         fi
