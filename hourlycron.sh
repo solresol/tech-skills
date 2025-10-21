@@ -39,12 +39,12 @@ BATCHCHECK_RESULT="unknown"
 do_batchcheck() {
     local start
     start=$(date +%s)
-    log "START  uv run batchcheck.py --no-work-exit-code ${NO_WORK_EXIT_CODE}"
+    log "START  uv run batchcheck.py"
 
-    if uv run batchcheck.py --no-work-exit-code "${NO_WORK_EXIT_CODE}"; then
+    if uv run batchcheck.py; then
         local elapsed
         elapsed=$(( $(date +%s) - start ))
-        log "SUCCESS uv run batchcheck.py --no-work-exit-code ${NO_WORK_EXIT_CODE} (took ${elapsed}s)"
+        log "SUCCESS uv run batchcheck.py (took ${elapsed}s)"
         BATCHCHECK_RESULT="completed"
         return 0
     else
@@ -56,7 +56,7 @@ do_batchcheck() {
             BATCHCHECK_RESULT="pending"
             return 0
         else
-            log "FAILURE uv run batchcheck.py --no-work-exit-code ${NO_WORK_EXIT_CODE} (exit ${status}, took ${elapsed}s)"
+            log "FAILURE uv run batchcheck.py (exit ${status}, took ${elapsed}s)"
             BATCHCHECK_RESULT="error"
             return ${status}
         fi

@@ -8,6 +8,8 @@ import openai
 import pgconnect
 import time
 
+NO_WORK_EXIT_CODE = 3
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
                     default="db.conf",
@@ -15,12 +17,6 @@ parser.add_argument("--database-config",
 parser.add_argument("--openai-api-key", default=os.path.expanduser("~/.openai.key"))
 parser.add_argument("--only-batch", type=int, help="The batch ID to look at")
 parser.add_argument("--monitor", action="store_true", help="Monitor in a loop until the status is 'completed'. Only makes sense with --only-batch")
-parser.add_argument(
-    "--no-work-exit-code",
-    type=int,
-    default=1,
-    help="Exit code to use when no batches are ready (defaults to 1 for backward compatibility)",
-)
 args = parser.parse_args()
 
 api_key = open(args.openai_api_key).read().strip()
@@ -140,4 +136,4 @@ while True:
 if work_to_be_done:
     sys.exit(0)
 else:
-    sys.exit(args.no_work_exit_code)
+    sys.exit(NO_WORK_EXIT_CODE)
