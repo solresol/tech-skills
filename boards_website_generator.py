@@ -334,7 +334,7 @@ def setup_jinja_environment():
     A lot has to happen to get us from here to there safely. We need wise and knowledgeable leaders who understand how AI bots work at a deep level in order to guide us on this path. <a href="https://en.wikipedia.org/wiki/AI_alignment">AI Alignment</a> is not something that you can do if you only have a high-level understanding. So let's ask how many directors seem to have the right background that they would be able to review plans to use AI.
     </p>
     <p>
-    Incidentally, I <a href="http://www.ifost.org.au/">run workshops</a> for senior managers on these sorts of topics.
+    Incidentally, I <a href="https://upskill.industrial-linguistics.com/">run workshops</a> for senior managers on these sorts of topics.
     </p>
     </div>
     
