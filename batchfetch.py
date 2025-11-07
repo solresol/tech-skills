@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
-import sys
-import openai
-import sqlite3
-import time
 import json
-import pgconnect
 import logging
+import openai
+import os
+import pgconnect
+import sqlite3
+import sys
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
