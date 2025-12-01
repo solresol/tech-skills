@@ -29,6 +29,12 @@ if args.verbose:
         level=logging.INFO,
         datefmt='%Y-%m-%d %H:%M:%S')
     logging.info("Starting")
+else:
+    # Enable logging at WARNING level by default so errors are visible
+    logging.basicConfig(
+        format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+        level=logging.WARNING,
+        datefmt='%Y-%m-%d %H:%M:%S')
 
 
 api_key = open(os.path.expanduser(args.openai_key_file)).read().strip()
@@ -73,9 +79,35 @@ for local_batch_id, openai_batch_id in cursor:
                 openai_result.error_file_id,
             )
     if openai_result.output_file_id is None:
+        logging.warning(
+            "Batch %s (local_id=%s) has status=%s but no output_file_id; skipping",
+            openai_batch_id,
+            local_batch_id,
+            openai_result.status,
+        )
         continue
-    
-    file_response = client.files.content(openai_result.output_file_id)
+
+    try:
+        file_response = client.files.content(openai_result.output_file_id)
+    except openai.NotFoundError:
+        logging.error(
+            "Batch %s (local_id=%s) output file %s not found (likely expired). "
+            "Marking batch as retrieved with no results.",
+            openai_batch_id,
+            local_batch_id,
+            openai_result.output_file_id,
+        )
+        # Mark the batch as retrieved so we don't keep retrying a lost file
+        update_cursor.execute(
+            "update director_extract_batches set when_retrieved = current_timestamp where id = %s",
+            [local_batch_id],
+        )
+        print(
+            f"ERROR: Batch {local_batch_id} (openai_id={openai_batch_id}) output file expired. "
+            f"File {openai_result.output_file_id} no longer available.",
+            file=sys.stderr,
+        )
+        continue
     iterator = file_response.text.splitlines()
     
     for row in iterator:
