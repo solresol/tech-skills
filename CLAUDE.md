@@ -226,3 +226,15 @@ The project uses OpenAI's Batch API with function calling:
 - The `--stop-after` flag limits processing for incremental runs
 - Use `--dry-run` flags to test without committing changes
 - Director name normalization is a known issue (see `encode_director_name()` in boards_website_generator.py:28)
+
+## Known Issues
+
+### Stuck Filing Problem
+
+If you are asked to address the "Stuck filing problem" or investigate why director extraction seems stuck, refer to **`STUCK_FILING_INVESTIGATION.md`** for:
+- Current progress and metrics
+- Root cause analysis
+- Hypotheses being tested
+- Daily progress log
+
+The file contains detailed technical findings about why OpenAI batches may be failing and how to fix them.
