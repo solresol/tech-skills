@@ -46,6 +46,7 @@ FAILED=0
 
 run_step "uv run batchfetch.py --show-costs" uv run batchfetch.py --show-costs || FAILED=1
 run_step "uv run process_director_compensation.py --show-costs" uv run process_director_compensation.py --show-costs || FAILED=1
+run_step "uv run process_from_raw.py" uv run process_from_raw.py || FAILED=1
 run_step "uv run fetch_prices_for_director_filings.py --stop-after 200" uv run fetch_prices_for_director_filings.py --stop-after 200 || FAILED=1
 run_step "uv run board_stock_analysis.py" uv run board_stock_analysis.py || FAILED=1
 run_step "uv run boards_website_generator.py" uv run boards_website_generator.py || FAILED=1
@@ -67,3 +68,13 @@ if [ "${FAILED}" -ne 0 ]; then
 fi
 
 echo "[$(timestamp)] Evening cron completed successfully"
+
+# Claude investigation of stuck filing problem - RESOLVED 2025-11-26
+# The stuck filing problem has been resolved. The issue was:
+# 1. URL mismatch in OpenAI batch requests (fixed Oct 10)
+# 2. Workflow conflict between batchfetch.py and process_director_compensation.py
+# 3. Added process_from_raw.py to handle any processing gaps
+# Keeping this comment for historical reference. Remove this whole section after confirming
+# the workflow runs smoothly for a few days.
+# echo "[$(timestamp)] Running Claude to investigate stuck filing problem"
+# claude --dangerously-skip-permissions --print "You are running at the end of eveningcron.sh to do daily work on understanding and fixing the stuck filing problem. The date is $(date). See STUCK_FILING_INVESTIGATION.md for context and progress notes."
