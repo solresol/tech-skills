@@ -208,7 +208,7 @@ For each director, clearly state:
     batch_text = {
         "custom_id": url,
         "method": "POST",
-        "url": "/chat/completions",
+        "url": "/v1/chat/completions",
         "body": {
             "model": "gpt-4.1-mini",
             "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
@@ -230,7 +230,7 @@ if args.dry_run:
     sys.exit(0)
 
 
-EXPECTED_BATCH_ENDPOINT = "/chat/completions"
+EXPECTED_BATCH_ENDPOINT = "/v1/chat/completions"
 
 
 def validate_batch_requests(batch_file_path):
