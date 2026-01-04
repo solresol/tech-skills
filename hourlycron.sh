@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+PATH=$HOME/.local/bin:$PATH
 
 timestamp() {
     date -u '+%Y-%m-%dT%H:%M:%SZ'
