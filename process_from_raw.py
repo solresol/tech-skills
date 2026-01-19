@@ -78,6 +78,11 @@ for cikcode, accessionnumber, response_json, url in cursor:
 
         # Process each director
         for director in directors:
+            # Skip malformed entries (strings instead of dicts)
+            if not isinstance(director, dict):
+                logging.warning(f"Skipping malformed director entry (type={type(director).__name__}) for {url}")
+                continue
+
             # Check if this director already exists for this URL
             lookup_cursor.execute("""
                 SELECT id FROM director_details
