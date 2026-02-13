@@ -3,6 +3,7 @@
 
 import argparse
 from datetime import datetime, timedelta, date as date_cls
+import logging
 import os
 import pgconnect
 
@@ -13,6 +14,27 @@ else:
         import yfinance as yf
     except Exception:  # pragma: no cover - fallback when yfinance unavailable
         import yfinance_stub as yf
+
+
+YAHOO_TICKER_UNAVAILABLE_PREFIX = "Ticker unavailable on Yahoo Finance"
+
+
+def _missing_data_reason(ticker: str) -> str:
+    """Return a clearer reason when Yahoo cannot serve a ticker at all."""
+
+    try:
+        info = yf.Ticker(ticker).info
+    except Exception:
+        return "No data returned for the given ticker and date"
+
+    quote_type = str(info.get("quoteType", "")).upper()
+    if quote_type == "NONE":
+        return (
+            f"{YAHOO_TICKER_UNAVAILABLE_PREFIX} "
+            "(possibly delisted, renamed, or unsupported symbol)"
+        )
+
+    return "No data returned for the given ticker and date"
 
 
 def fetch_stock_price(conn, ticker: str, price_date, *, force: bool = False,
@@ -47,14 +69,18 @@ def fetch_stock_price(conn, ticker: str, price_date, *, force: bool = False,
 
     start = price_date
     end = price_date + timedelta(days=1)
+    # yfinance logs noisy duplicate provider errors for delisted symbols.
+    # We handle failures ourselves and persist them in stock_price_failures.
+    logging.getLogger("yfinance").setLevel(logging.CRITICAL)
     data = yf.download(
         ticker,
         start=start.strftime("%Y-%m-%d"),
         end=end.strftime("%Y-%m-%d"),
         progress=False,
+        auto_adjust=False,
     )
     if data.empty:
-        raise RuntimeError("No data returned for the given ticker and date")
+        raise RuntimeError(_missing_data_reason(ticker))
     # ``yf.download`` may return a DataFrame with a MultiIndex in some
     # situations.  ``data["Close"]`` will then yield a DataFrame rather than a
     # Series.  Handle either case by using ``iat`` with the appropriate

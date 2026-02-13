@@ -11,7 +11,7 @@ import logging
 import time
 
 import pgconnect
-from stock_price import fetch_stock_price
+from stock_price import YAHOO_TICKER_UNAVAILABLE_PREFIX, fetch_stock_price
 
 
 def main() -> None:
@@ -60,6 +60,14 @@ def main() -> None:
             )
         else:
             cur.execute(
+                "SELECT 1 FROM stock_price_failures "
+                "WHERE ticker=%s AND failure_msg LIKE %s LIMIT 1",
+                (ticker, f"{YAHOO_TICKER_UNAVAILABLE_PREFIX}%"),
+            )
+            if cur.fetchone():
+                continue
+
+            cur.execute(
                 "SELECT 1 FROM stock_price_failures WHERE ticker=%s AND price_date=%s",
                 (ticker, filing_date),
             )
@@ -82,15 +90,19 @@ def main() -> None:
                 dummy_run=args.dummy_run,
             )
         except RuntimeError as exc:
+            failure_msg = str(exc)
             cur.execute(
                 "INSERT INTO stock_price_failures (ticker, price_date, failure_msg)"
                 " VALUES (%s, %s, %s)"
                 " ON CONFLICT (ticker, price_date) DO UPDATE"
                 " SET failure_msg = EXCLUDED.failure_msg",
-                (ticker, filing_date, str(exc)),
+                (ticker, filing_date, failure_msg),
             )
             conn.commit()
-            logging.error("Failed to fetch %s on %s: %s", ticker, filing_date, exc)
+            if failure_msg.startswith(YAHOO_TICKER_UNAVAILABLE_PREFIX):
+                logging.warning("Skipping unavailable ticker %s: %s", ticker, failure_msg)
+            else:
+                logging.error("Failed to fetch %s on %s: %s", ticker, filing_date, failure_msg)
         else:
             conn.commit()
 
