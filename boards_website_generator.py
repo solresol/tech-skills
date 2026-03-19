@@ -181,6 +181,29 @@ def create_css(output_dir):
         margin-bottom: 20px;
     }
 
+    .intro-section h2,
+    .info-card h2 {
+        color: var(--primary-color);
+        margin-bottom: 12px;
+    }
+
+    .intro-section p + p,
+    .info-card p + p,
+    .container p + p {
+        margin-top: 12px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .info-card {
+        height: 100%;
+    }
+
     .metrics-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -394,9 +417,9 @@ def setup_jinja_environment():
 <body>
     <header>
         <h1>Database of Software Skills in Corporate Board Directors</h1>
-        <p>Explore directors of U.S. listed companies</p>
-        <p>{{percent_complete|round(2)}}% of {{doc_cache_size}} filings analysed</p>
-        <p><strong>{{software_skills_percentage|round(1)}}%</strong> of board directors have software skills</p>
+        <p>A filing-based directory of directors at U.S. listed companies and the software experience described in their proxy statements.</p>
+        <p>{{percent_complete|round(2)}}% of {{ '{:,}'.format(doc_cache_size) }} cached filings analysed</p>
+        <p><strong>{{software_skills_percentage|round(1)}}%</strong> of directors in processed filings show software-background evidence</p>
         <nav>
             <div class="nav-links">
                 <a href="progress.html">Processing Progress</a>
@@ -404,16 +427,25 @@ def setup_jinja_environment():
         </nav>
     </header>
 
-    <div class="purpose">
-    <p>
-    <a href="https://a16z.com/why-software-is-eating-the-world/">Software is eating the world</a>. The future of business is bots-supervising-bots to do the white collar work, with a small dash of human oversight.
-    </p>
-    <p>
-    A lot has to happen to get us from here to there safely. We need wise and knowledgeable leaders who understand how AI bots work at a deep level in order to guide us on this path. <a href="https://en.wikipedia.org/wiki/AI_alignment">AI Alignment</a> is not something that you can do if you only have a high-level understanding. So let's ask how many directors seem to have the right background that they would be able to review plans to use AI.
-    </p>
-    <p>
-    Incidentally, I <a href="https://upskill.industrial-linguistics.com/">run workshops</a> for senior managers on these sorts of topics.
-    </p>
+    <div class="container intro-section">
+        <h2>What this project is</h2>
+        <p>This project tries to measure how often public-company directors are described as having meaningful software or technology experience.</p>
+        <p>For each processed filing, the site extracts director biographies from SEC proxy statements and records whether the filing itself presents that director as having a software background. The Tech Score shown for each person is the share of processed mentions that were classified as software-background mentions.</p>
+        <p>The result is not a hand-curated ranking or certification. It is a filing-based index of what companies say about their directors in public disclosures.</p>
+    </div>
+
+    <div class="info-grid">
+        <div class="container info-card">
+            <h2>Where the data comes from</h2>
+            <p>Company identities and filing metadata come from the SEC submissions bulk data. The evidence shown on director pages comes from DEF 14A proxy filings retrieved from EDGAR.</p>
+            <p>Those filings are cleaned into text and turned into structured director records, so the site reflects public filing language rather than a commercial profile database.</p>
+        </div>
+
+        <div class="container info-card">
+            <h2>Why the site is only partially complete</h2>
+            <p>The backlog is large, and each filing has to be downloaded, cleaned, and processed through the extraction pipeline before it appears here.</p>
+            <p>Right now the directory is based on {{ '{:,}'.format(accessions_processed) }} processed filings out of {{ '{:,}'.format(doc_cache_size) }} cached filings. If a director or company seems to be missing, that usually means its filings have not been analysed yet rather than that it was intentionally excluded. The <a href="progress.html">progress page</a> tracks that backlog.</p>
+        </div>
     </div>
     
     <div class="container">
@@ -437,13 +469,12 @@ def setup_jinja_environment():
     
     <div class="container">
         <h2>About Tech Score</h2>
-        <p>The Tech Score (0-100) indicates how often a director is described in terms of their software/technology skills or background. 
-        Higher scores mean stronger evidence of technology expertise.</p>
-        <p>Color intensity reflects the score: gray (0) → blue (50) → green (100).</p>
+        <p>The Tech Score (0-100) reflects how often a director is described in processed filings as having software or technology expertise. Higher scores mean stronger and more repeated evidence in the filings we have already analysed.</p>
+        <p>Color intensity reflects the score: gray (0) to blue (50) to green (100).</p>
     </div>
     
     <div class="footnote">
-        <p>Data sourced from SEC filings. Last updated: {{ last_updated }}</p>
+        <p>Source material: SEC submissions metadata and DEF 14A proxy filings from EDGAR. Last updated: {{ last_updated }}</p>
     </div>
     
     <script src="js/script.js"></script>
@@ -517,7 +548,7 @@ def setup_jinja_environment():
     {% endfor %}
     
     <div class="footnote">
-        <p>Data sourced from SEC filings. Last updated: {{ last_updated }}</p>
+        <p>Source material: SEC submissions metadata and DEF 14A proxy filings from EDGAR. Last updated: {{ last_updated }}</p>
     </div>
     
     <script src="../js/script.js"></script>
@@ -620,7 +651,7 @@ def setup_jinja_environment():
     </div>
 
     <div class=\"footnote\">
-        <p>Data sourced from SEC filings. Last updated: {{ last_updated }}</p>
+        <p>Source material: SEC submissions metadata and DEF 14A proxy filings from EDGAR. Last updated: {{ last_updated }}</p>
     </div>
 
     <script>
@@ -1044,7 +1075,8 @@ def generate_website(output_dir, conn):
             last_updated=last_updated,
             percent_complete=percent_complete,
             doc_cache_size=doc_cache_size,
-            software_skills_percentage=software_skills_percentage
+            software_skills_percentage=software_skills_percentage,
+            accessions_processed=accessions_processed
         ))
 
     with open(os.path.join(output_dir, "progress.html"), "w") as f:
