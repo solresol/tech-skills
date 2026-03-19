@@ -431,7 +431,8 @@ def setup_jinja_environment():
         <h2>What this project is</h2>
         <p>This project tries to measure how often public-company directors are described as having meaningful software or technology experience.</p>
         <p>For each processed filing, the site extracts director biographies from SEC proxy statements and records whether the filing itself presents that director as having a software background. The Tech Score shown for each person is the share of processed mentions that were classified as software-background mentions.</p>
-        <p>The result is not a hand-curated ranking or certification. It is a filing-based index of what companies say about their directors in public disclosures.</p>
+        <p>This website is not a hand-curated ranking or certification. It is a filing-based index of what companies say about their directors in public disclosures.</p>
+        <p>If you think you have been misrepresented by this website, please contact <a href="mailto:gregb@industrial-linguistics.com">gregb@industrial-linguistics.com</a> so that we can figure out what went wrong.</p>
     </div>
 
     <div class="info-grid">
