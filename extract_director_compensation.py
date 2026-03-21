@@ -249,7 +249,7 @@ If any information is not available for a director, use appropriate default valu
         "method": "POST",
         "url": "/v1/chat/completions",
         "body": {
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5.4-mini",
             "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
             "temperature": 0,
             "tools": tools,

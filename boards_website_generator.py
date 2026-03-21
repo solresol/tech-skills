@@ -30,7 +30,7 @@ def encode_director_name(name):
     """Convert director name to URL-safe string."""
     # To-do. The real solution here is to collect all pairs of names
     # that have a high trigram overlap, together with everything we know
-    # about them, and see if gpt-4o-mini thinks they are the same person
+    # about them, and see if gpt-5.4-mini thinks they are the same person
     # At the moment, we have the problem that if one person has two spellings
     # we only write a file out for one of them (and it's random which).
 

@@ -154,7 +154,7 @@ The pipeline has distinct stages:
    - Cleans HTML (removes CSS/JS, invisible elements)
    - Submits to OpenAI Batch API using function calling
    - Uses `director_extract_batches` table to track batch lifecycle
-   - Model: `gpt-4.1-mini` (batch)
+   - Model: `gpt-5.4-mini` (batch)
 
 3. **Result Processing** (`process_director_compensation.py`):
    - Retrieves completed batches
