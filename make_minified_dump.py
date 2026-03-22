@@ -12,6 +12,23 @@ def build_env(password):
     return env
 
 
+def run_pipe_checked(source_cmd, source_env, sink_cmd, sink_env):
+    dump_proc = subprocess.Popen(source_cmd, stdout=subprocess.PIPE, env=source_env)
+    assert dump_proc.stdout is not None
+    try:
+        restore_proc = subprocess.Popen(sink_cmd, stdin=dump_proc.stdout, env=sink_env)
+    finally:
+        dump_proc.stdout.close()
+
+    restore_proc.communicate()
+    dump_status = dump_proc.wait()
+
+    if restore_proc.returncode != 0:
+        raise subprocess.CalledProcessError(restore_proc.returncode, sink_cmd)
+    if dump_status != 0:
+        raise subprocess.CalledProcessError(dump_status, source_cmd)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Create minified database dump")
     parser.add_argument("--config", default="db.conf", help="Config file with DB details")
@@ -57,6 +74,8 @@ def main():
     # 3. copy source database into destination
     dump_cmd = [
         "pg_dump",
+        "--no-owner",
+        "--no-privileges",
         "-h", src_host,
         "-p", str(src_port),
         "-U", src["user"],
@@ -64,19 +83,20 @@ def main():
     ]
     psql_cmd = [
         "psql",
+        "-X",
+        "-v", "ON_ERROR_STOP=1",
         "-h", dst_host,
         "-p", str(dst_port),
         "-U", dst["user"],
         dst["dbname"],
     ]
-    dump_proc = subprocess.Popen(dump_cmd, stdout=subprocess.PIPE, env=src_env)
-    psql_proc = subprocess.Popen(psql_cmd, stdin=dump_proc.stdout, env=dst_env)
-    psql_proc.communicate()
-    dump_proc.wait()
+    run_pipe_checked(dump_cmd, src_env, psql_cmd, dst_env)
 
     # 4. remove large column contents
     subprocess.run([
         "psql",
+        "-X",
+        "-v", "ON_ERROR_STOP=1",
         "-h", dst_host,
         "-p", str(dst_port),
         "-U", dst["user"],
@@ -86,6 +106,8 @@ def main():
     ], check=True, env=dst_env)
     subprocess.run([
         "psql",
+        "-X",
+        "-v", "ON_ERROR_STOP=1",
         "-h", dst_host,
         "-p", str(dst_port),
         "-U", dst["user"],
