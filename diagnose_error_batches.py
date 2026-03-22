@@ -3,8 +3,8 @@
 import argparse
 import json
 import sys
-import os
 import openai
+import openai_key
 import pgconnect
 
 parser = argparse.ArgumentParser(description="Diagnose batches with errors and provide detailed information")
@@ -12,7 +12,7 @@ parser.add_argument("--database-config",
                     default="db.conf",
                     help="Parameters to connect to the database")
 parser.add_argument("--openai-key-file",
-                    default="~/.openai.key")
+                    default=openai_key.DEFAULT_OPENAI_KEY_FILE)
 parser.add_argument("--show-batches", action="store_true",
                     help="Show all batches with unretrieved errors")
 parser.add_argument("--batch-id", type=int,
@@ -28,7 +28,7 @@ cursor = conn.cursor()
 # Set up OpenAI client if needed
 client = None
 if args.show_batches or args.batch_id:
-    api_key = open(os.path.expanduser(args.openai_key_file)).read().strip()
+    api_key = openai_key.load_openai_api_key(args.openai_key_file)
     client = openai.OpenAI(api_key=api_key)
 
 def parse_error_record(error_json_str):

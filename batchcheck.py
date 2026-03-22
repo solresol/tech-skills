@@ -2,9 +2,9 @@
 
 import argparse
 import json
-import os
 import sys
 import openai
+import openai_key
 import pgconnect
 import time
 
@@ -14,12 +14,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
                     default="db.conf",
                     help="Parameters to connect to the database")
-parser.add_argument("--openai-api-key", default=os.path.expanduser("~/.openai.key"))
+parser.add_argument("--openai-api-key", default=openai_key.DEFAULT_OPENAI_KEY_FILE)
 parser.add_argument("--only-batch", type=int, help="The batch ID to look at")
 parser.add_argument("--monitor", action="store_true", help="Monitor in a loop until the status is 'completed'. Only makes sense with --only-batch")
 args = parser.parse_args()
 
-api_key = open(args.openai_api_key).read().strip()
+api_key = openai_key.load_openai_api_key(args.openai_api_key)
 client = openai.OpenAI(api_key=api_key)
 
 

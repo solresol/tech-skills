@@ -245,7 +245,7 @@ After applying the fix:
 3. Check batch status:
    ```python
    import openai, os
-   client = openai.OpenAI(api_key=open(os.path.expanduser('~/.openai.key')).read().strip())
+   client = openai.OpenAI(api_key=open(os.path.expanduser('~/.openai.boardskills.key')).read().strip())
    # Use the batch ID from the output above
    result = client.batches.retrieve('batch_xxx')
    print(result.status, result.errors)

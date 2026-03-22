@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
 import sys
 import openai
+import openai_key
 import time
 import json
 import pgconnect
@@ -14,7 +14,7 @@ parser.add_argument("--database-config",
                     default="db.conf",
                     help="Parameters to connect to the database")
 parser.add_argument("--openai-key-file",
-                    default="~/.openai.key")
+                    default=openai_key.DEFAULT_OPENAI_KEY_FILE)
 parser.add_argument("--verbose",
                     action="store_true",
                     help="Lots of debugging messages")
@@ -29,7 +29,7 @@ if args.verbose:
         datefmt='%Y-%m-%d %H:%M:%S')
     logging.info("Starting")
 
-api_key = open(os.path.expanduser(args.openai_key_file)).read().strip()
+api_key = openai_key.load_openai_api_key(args.openai_key_file)
 client = openai.OpenAI(api_key=api_key)
 
 conn = pgconnect.connect(args.database_config)

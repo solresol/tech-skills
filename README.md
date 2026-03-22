@@ -231,8 +231,9 @@ from SEC filings (DEF 14A) and stores the data in a PostgreSQL database.
    ```bash
    psql -f schema.sql
    ```
-2. Ensure you have an OpenAI API key in `~/.openai.key` (or specify a different
-   location with `--openai-key-file`).
+2. Ensure you have an OpenAI API key in `~/.openai.boardskills.key`. If that
+   file is absent, the tools fall back to `~/.openai.key`. You can also specify
+   a different location with `--openai-key-file`.
 
 ### Usage
 
@@ -253,7 +254,7 @@ Options:
 - `--cikcode CIK`: Only process documents from a specific CIK code
 - `--accession-number ACC_NUM`: Only process a specific accession number
 - `--accession-file FILE`: Process accession numbers from a file
-- `--openai-key-file KEY_FILE`: Path to OpenAI API key file (default: `~/.openai.key`)
+- `--openai-key-file KEY_FILE`: Path to OpenAI API key file (default: `~/.openai.boardskills.key`, falling back to `~/.openai.key` if absent)
 - `--dry-run`: Don't send anything to OpenAI (for testing)
 - `--batch-file FILE`: Where to save the batch file (default: random temp file)
 - `--batch-id-save-file FILE`: Save the batch ID to a file
@@ -274,7 +275,7 @@ Once the OpenAI batch processing is complete, retrieve and store the results:
 ```
 Options:
 - `--database-config DB_CONFIG`: Database connection config (default: `db.conf`)
-- `--openai-key-file KEY_FILE`: Path to OpenAI API key file (default: `~/.openai.key`)
+- `--openai-key-file KEY_FILE`: Path to OpenAI API key file (default: `~/.openai.boardskills.key`, falling back to `~/.openai.key` if absent)
 - `--verbose`: Show detailed logging
 - `--show-costs`: Display token usage and estimated costs
 
@@ -314,4 +315,3 @@ To create a sandbox environment with a populated database you can run:
 ```
 
 This installs PostgreSQL, downloads the Python dependencies via `uv run uvbootstrap.py`, creates a local `techskills` database and user, writes a `db.conf` file (including a `[minified]` section used for generating sanitized dumps), and restores the latest minified dump from <http://datadumps.ifost.org.au/tech-skills/techskills.sql.gz>.
-

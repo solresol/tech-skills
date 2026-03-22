@@ -4,8 +4,8 @@ import argparse
 import pgconnect
 import logging
 import sys
-import os
 import openai
+import openai_key
 from bs4 import BeautifulSoup
 import tempfile
 import json
@@ -31,7 +31,7 @@ parser.add_argument("--accession-number",
 parser.add_argument("--accession-file",
                     help="File containing accession numbers to process, one per line")
 parser.add_argument("--openai-key-file",
-                    default="~/.openai.key")
+                    default=openai_key.DEFAULT_OPENAI_KEY_FILE)
 parser.add_argument("--show-prompt", action="store_true", help="Display the prompts that are sent to OpenAI")
 parser.add_argument("--show-response", action="store_true", help="Display the response returned by OpenAI")
 parser.add_argument("--dry-run", action="store_true", help="Don't send anything to OpenAI")
@@ -269,7 +269,7 @@ if args.dry_run:
     sys.exit(0)
 
 # Submit the batch to OpenAI
-api_key = open(os.path.expanduser(args.openai_key_file)).read().strip()
+api_key = openai_key.load_openai_api_key(args.openai_key_file)
 client = openai.OpenAI(api_key=api_key)
 
 

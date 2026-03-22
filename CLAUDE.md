@@ -222,7 +222,7 @@ The project uses OpenAI's Batch API with function calling:
 
 - Always include User-Agent when accessing SEC (set in `db.conf` under `[edgar]`)
 - Rate limit SEC requests to 1 second between calls
-- OpenAI API key stored in `~/.openai.key` (expanduser path)
+- OpenAI API key defaults to `~/.openai.boardskills.key`, falling back to `~/.openai.key` if the project-specific file is absent
 - The `--stop-after` flag limits processing for incremental runs
 - Use `--dry-run` flags to test without committing changes
 - Director name normalization is a known issue (see `encode_director_name()` in boards_website_generator.py:28)
