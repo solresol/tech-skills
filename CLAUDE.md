@@ -83,7 +83,7 @@ uv run fetch_forms_from_edgar.py --progress --year 2023
 
 **Submit filings to OpenAI for director extraction:**
 ```bash
-uv run extract_director_compensation.py --stop-after 100 --progress
+uv run extract_director_compensation.py --stop-after 50 --progress
 ```
 
 **Retrieve and process OpenAI batch results:**

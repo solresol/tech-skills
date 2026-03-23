@@ -51,7 +51,7 @@ run_step "git pull" git pull -q || FAILED=1
 
 export OPENAI_LOG=debug
 
-ASK_OPENAI_ARGS=(--stop-after 100 --verbose --show-prompt --show-response)
+ASK_OPENAI_ARGS=(--stop-after 50 --verbose --show-prompt --show-response)
 if [ -n "${ASK_OPENAI_BULK_EXTRA_ARGS:-}" ]; then
     # shellcheck disable=SC2206
     ASK_OPENAI_ARGS+=( ${ASK_OPENAI_BULK_EXTRA_ARGS} )
@@ -61,7 +61,7 @@ fi
 run_step "uv run ask_openai_bulk.py" uv run ask_openai_bulk.py "${ASK_OPENAI_ARGS[@]}" || FAILED=1
 
 # I'm not sure if this is working
-run_step "uv run extract_director_compensation.py" uv run extract_director_compensation.py --stop-after 110 || FAILED=1
+run_step "uv run extract_director_compensation.py" uv run extract_director_compensation.py --stop-after 50 || FAILED=1
 
 # Because sector information fails pretty regularly, I often
 # ask codex to populate the mistakes manually. Why I don't
