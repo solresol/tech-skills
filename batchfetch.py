@@ -10,6 +10,8 @@ import sqlite3
 import sys
 import time
 
+from batch_response_parser import RetryableBatchRecordError, extract_tool_arguments
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
                     default="db.conf",
@@ -65,6 +67,28 @@ def clean_json_for_postgres(json_obj):
     else:
         return json_obj
 
+
+def release_url_for_retry(local_batch_id, url):
+    released = 0
+    for table_name in ("director_extractions", "director_compensation"):
+        update_cursor.execute(
+            f"delete from {table_name} where batch_id = %s and url = %s",
+            [local_batch_id, url],
+        )
+        released += update_cursor.rowcount
+    return released
+
+
+def format_record_context(error):
+    context = []
+    if getattr(error, "request_id", None):
+        context.append(f"request_id={error.request_id}")
+    if getattr(error, "finish_reason", None):
+        context.append(f"finish_reason={error.finish_reason}")
+    if context:
+        return " (" + ", ".join(context) + ")"
+    return ""
+
 for local_batch_id, openai_batch_id in cursor:
     openai_result = client.batches.retrieve(openai_batch_id)
     if openai_result.status != 'completed' and openai_result.status != 'expired':
@@ -112,18 +136,29 @@ for local_batch_id, openai_batch_id in cursor:
     
     for row in iterator:
         record = json.loads(row)
+        url = record.get('custom_id')
+        if url is None:
+            logging.error(
+                "Batch %s (local_id=%s) returned a record without custom_id; skipping unrecoverable row",
+                openai_batch_id,
+                local_batch_id,
+            )
+            continue
 
-        if record['response']['status_code'] != 200:
-            url = record['custom_id']
+        response = record.get('response') or {}
+        body = response.get('body')
+        if not isinstance(body, dict):
+            body = {}
+
+        if response.get('status_code') != 200:
             lookup_cursor.execute(
                 "select cikcode, accessionNumber, filingDate from filings where document_storage_url = %s",
                 [url],
             )
             filing_info = lookup_cursor.fetchone()
 
-            request_id = record['response'].get('request_id')
+            request_id = response.get('request_id')
             error_message = None
-            body = record['response'].get('body')
             if isinstance(body, dict):
                 error = body.get('error')
                 if isinstance(error, dict):
@@ -142,29 +177,61 @@ for local_batch_id, openai_batch_id in cursor:
             if error_message:
                 sys.stderr.write(f": {error_message}")
             sys.stderr.write("\n")
+            released = release_url_for_retry(local_batch_id, url)
+            logging.warning(
+                "Batch %s (local_id=%s) returned status_code=%s for %s and released %s queued row(s) for retry",
+                openai_batch_id,
+                local_batch_id,
+                response.get('status_code'),
+                url,
+                released,
+            )
             continue
 
         # Get the filename (which was used as the custom_id)
-        url = record['custom_id']
-
         lookup_cursor.execute(
             "select cikcode, accessionNumber from filings where document_storage_url = %s",
             [url],
         )
-        cikcode, accession_number = lookup_cursor.fetchone()
-        # Just assume it works. Unless OpenAI makes something up, we're just getting back something we gave it
+        filing = lookup_cursor.fetchone()
+        if filing is None:
+            released = release_url_for_retry(local_batch_id, url)
+            logging.error(
+                "Batch %s (local_id=%s) returned URL %s but no matching filing was found. Released %s queued row(s) for retry.",
+                openai_batch_id,
+                local_batch_id,
+                url,
+                released,
+            )
+            continue
+        cikcode, accession_number = filing
 
         # Extract usage information
-        usage = record['response']['body']['usage']
-        model = record['response']['body']['model'] + " (batch)"
+        usage = body.get('usage') or {}
+        prompt_tokens = usage.get('prompt_tokens', 0)
+        completion_tokens = usage.get('completion_tokens', 0)
 
         # Extract the tool call arguments
         try:
-            arguments = json.loads(record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'])
+            arguments = extract_tool_arguments(record)
             # Clean the arguments before storing
             arguments = clean_json_for_postgres(arguments)
-        except json.decoder.JSONDecodeError:
-            arguments = {'error': 'malformed json', 'text': record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'] }
+        except RetryableBatchRecordError as exc:
+            released = release_url_for_retry(local_batch_id, url)
+            logging.warning(
+                "Batch %s (local_id=%s) returned unusable structured output for %s: %s%s. Released %s queued row(s) for retry.",
+                openai_batch_id,
+                local_batch_id,
+                url,
+                exc.reason,
+                format_record_context(exc),
+                released,
+            )
+            print(
+                f"WARNING: Batch {local_batch_id} (openai_id={openai_batch_id}) returned unusable structured output for {url}: {exc.reason}{format_record_context(exc)}",
+                file=sys.stderr,
+            )
+            continue
             
         # Update the files table with the analysis results
         update_cursor.execute("""
@@ -175,10 +242,10 @@ for local_batch_id, openai_batch_id in cursor:
                        response = excluded.response,
                        prompt_tokens = excluded.prompt_tokens,
                        completion_tokens = excluded.completion_tokens
-        """, [cikcode, accession_number, json.dumps(arguments), usage['prompt_tokens'], usage['completion_tokens']])
+        """, [cikcode, accession_number, json.dumps(arguments), prompt_tokens, completion_tokens])
         
-        total_prompt_tokens += usage['prompt_tokens']
-        total_completion_tokens += usage['completion_tokens']
+        total_prompt_tokens += prompt_tokens
+        total_completion_tokens += completion_tokens
     
     # Mark the batch as retrieved
     update_cursor.execute("update director_extract_batches set when_retrieved = current_timestamp where id = %s", [local_batch_id])

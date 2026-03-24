@@ -9,6 +9,8 @@ import json
 import pgconnect
 import logging
 
+from batch_response_parser import RetryableBatchRecordError, extract_tool_arguments
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
                     default="db.conf",
@@ -66,6 +68,25 @@ def clean_json_for_postgres(json_obj):
     else:
         return json_obj
 
+
+def release_url_for_retry(local_batch_id, url):
+    update_cursor.execute(
+        "DELETE FROM director_compensation WHERE batch_id = %s AND url = %s",
+        [local_batch_id, url],
+    )
+    return update_cursor.rowcount
+
+
+def format_record_context(error):
+    context = []
+    if getattr(error, "request_id", None):
+        context.append(f"request_id={error.request_id}")
+    if getattr(error, "finish_reason", None):
+        context.append(f"finish_reason={error.finish_reason}")
+    if context:
+        return " (" + ", ".join(context) + ")"
+    return ""
+
 work_to_be_done = False
 
 for local_batch_id, openai_batch_id in cursor:
@@ -101,12 +122,31 @@ for local_batch_id, openai_batch_id in cursor:
         for row in iterator:
             try:
                 record = json.loads(row)
-                if record['response']['status_code'] != 200:
+                url = record.get('custom_id')
+                if url is None:
+                    logging.error(
+                        "Batch %s returned a record without custom_id; skipping unrecoverable row",
+                        local_batch_id,
+                    )
+                    continue
+
+                response = record.get('response') or {}
+                body = response.get('body')
+                if not isinstance(body, dict):
+                    body = {}
+
+                if response.get('status_code') != 200:
+                    released = release_url_for_retry(local_batch_id, url)
+                    logging.warning(
+                        "Batch %s returned status_code=%s for %s and released %s queued row(s) for retry",
+                        local_batch_id,
+                        response.get('status_code'),
+                        url,
+                        released,
+                    )
                     continue
                 
                 # Get the URL (which was used as the custom_id)
-                url = record['custom_id']
-
                 # First, check if the URL exists in director_compensation
                 lookup_cursor.execute("SELECT 1 FROM director_compensation WHERE url = %s", [url])
                 url_exists = lookup_cursor.fetchone() is not None
@@ -126,17 +166,23 @@ for local_batch_id, openai_batch_id in cursor:
                 lookup_cursor.execute("SELECT cikcode, accessionNumber FROM filings WHERE document_storage_url = %s", [url])
                 result = lookup_cursor.fetchone()
                 if result is None:
-                    logging.warning(f"URL {url} not found in filings table, skipping")
+                    released = release_url_for_retry(local_batch_id, url)
+                    logging.warning(
+                        "URL %s not found in filings table; released %s queued row(s) for retry",
+                        url,
+                        released,
+                    )
                     continue
                     
                 cikcode, accession_number = result
 
                 # Extract usage information
-                usage = record['response']['body']['usage']
-                model = record['response']['body']['model'] + " (batch)"
+                usage = body.get('usage') or {}
+                prompt_tokens = usage.get('prompt_tokens', 0)
+                completion_tokens = usage.get('completion_tokens', 0)
 
                 # Extract the tool call arguments
-                arguments = json.loads(record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments'])
+                arguments = extract_tool_arguments(record)
                 # Clean the arguments before storing
                 arguments = clean_json_for_postgres(arguments)
                 
@@ -176,11 +222,19 @@ for local_batch_id, openai_batch_id in cursor:
                         WHERE url = %s
                     """, [url])
                 
-                total_prompt_tokens += usage['prompt_tokens']
-                total_completion_tokens += usage['completion_tokens']
+                total_prompt_tokens += prompt_tokens
+                total_completion_tokens += completion_tokens
                 
-            except json.decoder.JSONDecodeError:
-                logging.error(f"JSONDecodeError for {url}: {record['response']['body']['choices'][0]['message']['tool_calls'][0]['function']['arguments']}")
+            except RetryableBatchRecordError as exc:
+                released = release_url_for_retry(local_batch_id, url)
+                logging.warning(
+                    "Batch %s returned unusable structured output for %s: %s%s. Released %s queued row(s) for retry.",
+                    local_batch_id,
+                    url,
+                    exc.reason,
+                    format_record_context(exc),
+                    released,
+                )
             except Exception as e:
                 logging.error(f"Error processing response: {str(e)}")
                 conn.rollback()
