@@ -32,12 +32,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Software Skills vs Stock Growth</title>
     <link rel='stylesheet' href='css/style.css'>
 </head>
 <body>
     <header>
         <h1>Software-Skilled Directors and Stock Growth</h1>
+        <p>Exploratory filing-to-filing stock growth comparisons.</p>
+        <nav>
+            <div class='nav-links'>
+                <a href='index.html'>Directory</a>
+                <a href='network.html'>Board Network</a>
+                <a href='network-centrality-price.html'>Centrality and Price</a>
+            </div>
+        </nav>
     </header>
     <div class='container'>
         <h2>Mann-Whitney U Test</h2>
@@ -88,26 +97,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             {% endfor %}
         </table>
     </div>
+    <div class='footnote'>
+        <p>This is an exploratory screen based on available filing-date stock prices. It is not a causal model.</p>
+    </div>
 </body>
 </html>"""
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run stock growth analysis")
-    parser.add_argument("--database-config", default="db.conf", help="DB config")
-    parser.add_argument(
-        "--output-file",
-        default="boards-website/analysis.html",
-        help="Where to write the HTML results",
-    )
-    args = parser.parse_args()
+def generate_stock_analysis(
+    database_config: str = "db.conf",
+    output_file: str = "boards-website/analysis.html",
+) -> str:
+    """Generate the stock-growth analysis page and return the output path."""
 
-    output_dir = os.path.dirname(args.output_file)
+    output_dir = os.path.dirname(output_file)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
     config = configparser.ConfigParser()
-    config.read(args.database_config)
+    config.read(database_config)
 
     dbinfo = config["database"]
     dbname = dbinfo["dbname"]
@@ -144,7 +152,7 @@ def main() -> None:
         df = pd.read_sql(query, engine)
         engine.dispose()
     else:
-        conn = pgconnect.connect(args.database_config)
+        conn = pgconnect.connect(database_config)
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 "ignore",
@@ -271,10 +279,22 @@ def main() -> None:
         sector_stats=sector_stats,
     )
 
-    with open(args.output_file, "w") as fh:
+    with open(output_file, "w") as fh:
         fh.write(html)
+    return output_file
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run stock growth analysis")
+    parser.add_argument("--database-config", default="db.conf", help="DB config")
+    parser.add_argument(
+        "--output-file",
+        default="boards-website/analysis.html",
+        help="Where to write the HTML results",
+    )
+    args = parser.parse_args()
+    generate_stock_analysis(args.database_config, args.output_file)
 
 
 if __name__ == "__main__":
     main()
-

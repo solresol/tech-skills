@@ -4,12 +4,14 @@ import os
 import argparse
 import urllib.parse
 import json
+import hashlib
 from datetime import datetime, timedelta
 from math import ceil
 import jinja2
 import shutil
-import networkx as nx
 import pgconnect
+import network_pages
+import board_stock_analysis
 
 
 def create_output_directory(output_dir):
@@ -55,6 +57,42 @@ def encode_director_name(name):
         old_name = name
         name = name.replace('  ', ' ')
     return urllib.parse.quote_plus(name.lower())
+
+
+def director_sort_key(name):
+    return "" if name is None else str(name)
+
+
+def build_director_url_map(director_names):
+    """Return stable unique URL slugs for director profile pages."""
+    names_by_slug = {}
+    for name in sorted(director_names, key=director_sort_key):
+        names_by_slug.setdefault(encode_director_name(name), []).append(name)
+
+    url_map = {}
+    for slug, names in names_by_slug.items():
+        if len(names) == 1:
+            url_map[names[0]] = slug
+            continue
+
+        for name in names:
+            hash_source = "" if name is None else str(name)
+            digest = hashlib.sha1(hash_source.encode("utf-8")).hexdigest()[:8]
+            url_map[name] = f"{slug}-{digest}"
+    return url_map
+
+
+def cleanup_stale_director_pages(output_dir, expected_filenames):
+    """Remove generated director profile pages not expected in this run."""
+    directors_dir = os.path.join(output_dir, "directors")
+    if not os.path.isdir(directors_dir):
+        return
+
+    for filename in os.listdir(directors_dir):
+        if not filename.endswith(".html"):
+            continue
+        if filename not in expected_filenames:
+            os.remove(os.path.join(directors_dir, filename))
 
 
 def create_css(output_dir):
@@ -249,6 +287,32 @@ def create_css(output_dir):
         margin-top: 15px;
         color: var(--dark-gray);
     }
+
+    .link-list {
+        margin-top: 12px;
+        border-top: 1px solid var(--light-gray);
+    }
+
+    .feature-link-row {
+        display: block;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--light-gray);
+        color: var(--text-color);
+    }
+
+    .feature-link-row:hover {
+        text-decoration: none;
+    }
+
+    .feature-link-row strong {
+        display: block;
+        color: var(--secondary-color);
+        margin-bottom: 3px;
+    }
+
+    .feature-link-row span {
+        color: var(--dark-gray);
+    }
     
     table {
         width: 100%;
@@ -423,6 +487,8 @@ def setup_jinja_environment():
         <nav>
             <div class="nav-links">
                 <a href="progress.html">Processing Progress</a>
+                <a href="network.html">Board Network</a>
+                <a href="analysis.html">Stock Analysis</a>
             </div>
         </nav>
     </header>
@@ -446,6 +512,34 @@ def setup_jinja_environment():
             <h2>Why the site is only partially complete</h2>
             <p>The backlog is large, and each filing has to be downloaded, cleaned, and processed through the extraction pipeline before it appears here.</p>
             <p>Right now the directory is based on {{ '{:,}'.format(accessions_processed) }} processed filings out of {{ '{:,}'.format(doc_cache_size) }} cached filings. If a director or company seems to be missing, that usually means its filings have not been analysed yet rather than that it was intentionally excluded. The <a href="progress.html">progress page</a> tracks that backlog.</p>
+        </div>
+    </div>
+
+    <div class="container intro-section">
+        <h2>Board network views</h2>
+        <p>The network pages show companies connected by shared directors, with several reductions for dense clusters and the giant component.</p>
+        <div class="link-list">
+            <a class="feature-link-row" href="network.html">
+                <strong>All Network Views</strong>
+                <span>Start from the network index and choose a reduction.</span>
+            </a>
+            {% for link in network_page_links %}
+            <a class="feature-link-row" href="{{ link.href }}">
+                <strong>{{ link.title }}</strong>
+                <span>{{ link.description }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="container intro-section">
+        <h2>Share price analysis</h2>
+        <p>The stock analysis page compares software-background board evidence with filing-to-filing share price movement using the prices currently loaded in the database.</p>
+        <div class="link-list">
+            <a class="feature-link-row" href="analysis.html">
+                <strong>Software Skills vs Stock Growth</strong>
+                <span>Distribution, regression, and sector-level exploratory results.</span>
+            </a>
         </div>
     </div>
     
@@ -572,6 +666,8 @@ def setup_jinja_environment():
         <nav>
             <div class=\"nav-links\">
                 <a href=\"index.html\">← Back to Directory</a>
+                <a href=\"network.html\">Board Network</a>
+                <a href=\"analysis.html\">Stock Analysis</a>
             </div>
         </nav>
     </header>
@@ -849,153 +945,12 @@ def process_data(all_data):
 
 
 def generate_network_visualization(output_dir, conn):
-    """Create a force-directed network visualisation dataset and page."""
-    cursor = conn.cursor()
+    """Generate all network pages.
 
-    cursor.execute("SELECT cikcode, company_name FROM cik2name")
-    name_lookup = dict(cursor.fetchall())
-
-    cursor.execute(
-        """
-        SELECT c1.cikcode, c2.cikcode, COUNT(*)
-        FROM company_directorships c1
-        JOIN company_directorships c2
-          ON c1.director_name = c2.director_name
-         AND c1.cikcode < c2.cikcode
-        GROUP BY c1.cikcode, c2.cikcode
-        """
-    )
-    edges = cursor.fetchall()
-    cursor.close()
-
-    G = nx.Graph()
-
-    for cik, name in name_lookup.items():
-        G.add_node(cik, name=name)
-    for c1, c2, weight in edges:
-        G.add_edge(c1, c2, weight=weight)
-
-    for component in nx.connected_components(G):
-        sub = G.subgraph(component)
-        try:
-            centrality = nx.eigenvector_centrality(sub, max_iter=1000)
-        except nx.PowerIterationFailedConvergence:
-            centrality = nx.eigenvector_centrality_numpy(sub)
-        for node, score in centrality.items():
-            G.nodes[node]["centrality"] = score
-
-    data = {
-        "nodes": [
-            {
-                "id": cik,
-                "name": G.nodes[cik]["name"],
-                "centrality": G.nodes[cik].get("centrality", 0.0),
-            }
-            for cik in G.nodes
-        ],
-        "links": [
-            {"source": u, "target": v, "weight": d["weight"]}
-            for u, v, d in G.edges(data=True)
-        ],
-    }
-
-    with open(os.path.join(output_dir, "network_data.json"), "w") as f:
-        json.dump(data, f)
-
-    html = """<!DOCTYPE html>
-<html lang=\"en\">
-<head>
-    <meta charset=\"UTF-8\">
-    <title>Company Director Network</title>
-    <script src=\"https://d3js.org/d3.v7.min.js\"></script>
-    <link rel=\"stylesheet\" href=\"css/style.css\">
-</head>
-<body>
-    <h1>Company Director Network</h1>
-    <div id=\"network\"></div>
-    <script>
-    fetch('network_data.json').then(r => r.json()).then(data => {
-        const width = 960, height = 600;
-        const svg = d3.select('#network').append('svg')
-            .attr('width', width)
-            .attr('height', height);
-
-        const maxCentrality = d3.max(data.nodes, d => d.centrality);
-        const sizeScale = d3.scaleLinear()
-            .domain([0, maxCentrality])
-            .range([5, 25]);
-        const colorScale = d3.scaleSequential(d3.interpolateBlues)
-            .domain([0, maxCentrality]);
-
-        const simulation = d3.forceSimulation(data.nodes)
-            .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-50))
-            .force('center', d3.forceCenter(width / 2, height / 2));
-
-        const link = svg.append('g').selectAll('line')
-            .data(data.links)
-            .enter().append('line')
-            .attr('stroke', '#999')
-            .attr('stroke-opacity', 0.6);
-
-        const node = svg.append('g').selectAll('circle')
-            .data(data.nodes)
-            .enter().append('circle')
-            .attr('r', d => sizeScale(d.centrality))
-            .attr('fill', d => colorScale(d.centrality))
-            .call(d3.drag()
-                .on('start', dragstarted)
-                .on('drag', dragged)
-                .on('end', dragended));
-
-        const labels = svg.append('g').selectAll('text')
-            .data(data.nodes)
-            .enter().append('text')
-            .text(d => d.name)
-            .attr('font-size', 10)
-            .attr('dx', 8)
-            .attr('dy', 3);
-
-        node.append('title').text(d => d.name);
-
-        simulation.on('tick', () => {
-            link
-                .attr('x1', d => d.source.x)
-                .attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x)
-                .attr('y2', d => d.target.y);
-
-            node
-                .attr('cx', d => d.x)
-                .attr('cy', d => d.y);
-
-            labels
-                .attr('x', d => d.x)
-                .attr('y', d => d.y);
-        });
-
-        function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-        function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        }
-    });
-    </script>
-</body>
-</html>
-"""
-
-    with open(os.path.join(output_dir, "network.html"), "w") as f:
-        f.write(html)
+    Kept as a compatibility wrapper for callers that still invoke the old
+    single-page function name.
+    """
+    network_pages.generate_network_pages(output_dir, conn)
 
 
 
@@ -1017,6 +972,7 @@ def generate_website(output_dir, conn):
 
     # Create a dictionary to map director names to tech scores
     tech_scores = {director[0]: director[1] for director in directors}
+    director_url_map = build_director_url_map(director_profiles.keys())
 
     # Prepare progress metrics
     daily_progress_records = [
@@ -1063,11 +1019,11 @@ def generate_website(output_dir, conn):
     # Generate index page with tech scores
     director_list = [
         {
-            'name': director[0], 
-            'url': encode_director_name(director[0]),
-            'tech_score': director[1]
+            'name': director_name,
+            'url': director_url_map[director_name],
+            'tech_score': tech_scores.get(director_name, 0),
         } 
-        for director in directors
+        for director_name in sorted(director_profiles, key=director_sort_key)
     ]
     
     with open(os.path.join(output_dir, "index.html"), "w") as f:
@@ -1077,7 +1033,8 @@ def generate_website(output_dir, conn):
             percent_complete=percent_complete,
             doc_cache_size=doc_cache_size,
             software_skills_percentage=software_skills_percentage,
-            accessions_processed=accessions_processed
+            accessions_processed=accessions_processed,
+            network_page_links=network_pages.LANDING_NETWORK_PAGE_LINKS,
         ))
 
     with open(os.path.join(output_dir, "progress.html"), "w") as f:
@@ -1097,8 +1054,14 @@ def generate_website(output_dir, conn):
         ))
 
     # Generate director pages with tech evidence
-    for director_name, companies in director_profiles.items():
-        url_safe_name = encode_director_name(director_name)
+    expected_director_filenames = {
+        f"{url_safe_name}.html" for url_safe_name in director_url_map.values()
+    }
+    cleanup_stale_director_pages(output_dir, expected_director_filenames)
+
+    for director_name in sorted(director_profiles, key=director_sort_key):
+        companies = director_profiles[director_name]
+        url_safe_name = director_url_map[director_name]
         tech_score = tech_scores.get(director_name, 0)
         tech_score_class = (tech_score // 10) * 10  # Round down to nearest 10
         
@@ -1134,7 +1097,11 @@ if __name__ == '__main__':
 
     # Generate website
     generate_website(args.output_directory, conn)
-    generate_network_visualization(args.output_directory, conn)
+    network_pages.generate_network_pages(args.output_directory, conn)
+    board_stock_analysis.generate_stock_analysis(
+        args.database_config,
+        os.path.join(args.output_directory, "analysis.html"),
+    )
     
     # Close database connection
     conn.close()

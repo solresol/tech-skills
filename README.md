@@ -123,9 +123,11 @@ These might or might not still work
 
 `uv run boards_website_generator.py`
 
-This command now also produces a `network.html` page and an accompanying
-`network_data.json` file. These visualise connections between companies
-that share directors using NetworkX for analysis and D3 for display.
+This command now also produces a `network.html` index and several network
+analysis pages. These visualise companies that share directors using NetworkX
+for graph construction, D3 for display, and UMAP for the giant-component
+shortest-path projection. It also writes `analysis.html`, an exploratory stock
+growth page with the accompanying plot images.
 
 ## CIK to Ticker Extractor
 

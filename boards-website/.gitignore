@@ -1,7 +1,8 @@
 *.html
 *.css
 *.js
-network_data.json
+network_*.json
+network_*.csv
 growth_violin.png
 num_regression.png
 prop_regression.png
