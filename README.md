@@ -66,13 +66,15 @@ done
 
 11.  Schedule `morningcron.sh`
 
-That will run `uv run ask_openai_batch.py --stop-after 50`,
+That will run `uv run ask_openai_bulk.py --stop-after 50`,
 `uv run extract_director_compensation.py --stop-after 50` and
 `uv run fetch_all_sectors.py --stop-after 500 --progress` to gradually
 populate the sector table.
 
-I haven't figured out how to make sure the batches aren't too big or too small. I'm just
-winging it by finding a number that seems reasonable.
+The OpenAI submitters also enforce `--max-batch-prompt-tokens`, which defaults
+to 500,000 estimated `gpt-5.6-luna` prompt tokens per submitted batch. The
+`--stop-after` value is only a row-count ceiling; the token budget may stop a
+batch earlier.
 
 
 12. See how the batches are going with `uv run batchcheck.py`
@@ -260,6 +262,7 @@ Options:
 - `--dry-run`: Don't send anything to OpenAI (for testing)
 - `--batch-file FILE`: Where to save the batch file (default: random temp file)
 - `--batch-id-save-file FILE`: Save the batch ID to a file
+- `--max-batch-prompt-tokens NUM`: Maximum estimated prompt tokens per OpenAI batch (default: 500,000)
 
 Example:
 ```bash

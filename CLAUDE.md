@@ -85,6 +85,8 @@ uv run fetch_forms_from_edgar.py --progress --year 2023
 ```bash
 uv run extract_director_compensation.py --stop-after 50 --progress
 ```
+The OpenAI submitters enforce a default `--max-batch-prompt-tokens 500000`
+budget for `gpt-5.6-luna`; `--stop-after` is only a row-count ceiling.
 
 **Retrieve and process OpenAI batch results:**
 ```bash
@@ -154,7 +156,7 @@ The pipeline has distinct stages:
    - Cleans HTML (removes CSS/JS, invisible elements)
    - Submits to OpenAI Batch API using function calling
    - Uses `director_extract_batches` table to track batch lifecycle
-   - Model: `gpt-5.4-mini` (batch)
+   - Model: `gpt-5.6-luna` (batch)
 
 3. **Result Processing** (`process_director_compensation.py`):
    - Retrieves completed batches
@@ -211,6 +213,8 @@ The project uses OpenAI's Batch API with function calling:
 - 24-hour completion window
 - Tracks batches with local IDs and OpenAI batch IDs
 - Metadata includes local batch ID for cross-referencing
+- Submitters validate that every batch request uses `gpt-5.6-luna`
+- Default prompt-token budget: 500,000 estimated `gpt-5.6-luna` tokens per submitted batch
 
 ### Testing Strategy
 
@@ -223,7 +227,7 @@ The project uses OpenAI's Batch API with function calling:
 - Always include User-Agent when accessing SEC (set in `db.conf` under `[edgar]`)
 - Rate limit SEC requests to 1 second between calls
 - OpenAI API key defaults to `~/.openai.boardskills.key`, falling back to `~/.openai.key` if the project-specific file is absent
-- The `--stop-after` flag limits processing for incremental runs
+- The `--stop-after` flag limits rows considered for incremental runs; `--max-batch-prompt-tokens` limits submitted OpenAI prompt tokens
 - Use `--dry-run` flags to test without committing changes
 - Director name normalization is a known issue (see `encode_director_name()` in boards_website_generator.py:28)
 

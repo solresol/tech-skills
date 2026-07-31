@@ -9,6 +9,12 @@ import openai_key
 from bs4 import BeautifulSoup
 import tempfile
 import json
+from openai_batch_budget import (
+    DEFAULT_MAX_BATCH_PROMPT_TOKENS,
+    OPENAI_BATCH_MODEL,
+    estimate_request_prompt_tokens,
+    validate_batch_requests,
+)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
@@ -37,6 +43,12 @@ parser.add_argument("--show-response", action="store_true", help="Display the re
 parser.add_argument("--dry-run", action="store_true", help="Don't send anything to OpenAI")
 parser.add_argument("--batch-file", help="Where to put the batch file (default: random tempfile)")
 parser.add_argument("--batch-id-save-file", help="What file to put the local batch ID into")
+parser.add_argument(
+    "--max-batch-prompt-tokens",
+    type=int,
+    default=DEFAULT_MAX_BATCH_PROMPT_TOKENS,
+    help="Maximum estimated prompt tokens to submit in one OpenAI batch",
+)
 
 args = parser.parse_args()
 
@@ -164,6 +176,9 @@ if args.progress:
 else:
     iterator = read_cursor
 
+batch_request_count = 0
+estimated_prompt_tokens = 0
+
 for cikcode, accession_number, content, encoding, content_type, url in iterator:
     logging.info(f"Processing {cikcode=}, {accession_number=}")
     if args.progress:
@@ -249,7 +264,7 @@ If any information is not available for a director, use appropriate default valu
         "method": "POST",
         "url": "/v1/chat/completions",
         "body": {
-            "model": "gpt-5.4-mini",
+            "model": OPENAI_BATCH_MODEL,
             "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
             "temperature": 0,
             "tools": tools,
@@ -257,12 +272,54 @@ If any information is not available for a director, use appropriate default valu
         }
     }
 
+    request_tokens = estimate_request_prompt_tokens(batch_text)
+    if request_tokens > args.max_batch_prompt_tokens:
+        sys.stderr.write(
+            f"Skipping {url}: estimated prompt tokens {request_tokens:,} exceed "
+            f"batch limit {args.max_batch_prompt_tokens:,}\n"
+        )
+        continue
+    if (
+        batch_request_count > 0
+        and estimated_prompt_tokens + request_tokens > args.max_batch_prompt_tokens
+    ):
+        sys.stderr.write(
+            f"Stopping before {url}: estimated batch prompt tokens would be "
+            f"{estimated_prompt_tokens + request_tokens:,}, above limit "
+            f"{args.max_batch_prompt_tokens:,}\n"
+        )
+        break
+
     # Write to batch file
     with open(args.batch_file, 'a') as f:
         f.write(json.dumps(batch_text) + "\n")
 
     write_cursor.execute("insert into director_compensation (url, batch_id) values (%s, %s)", [url, batch_id])
+    batch_request_count += 1
+    estimated_prompt_tokens += request_tokens
 
+
+if batch_request_count == 0:
+    conn.rollback()
+    sys.exit(
+        "No OpenAI batch requests fit within the configured prompt-token limit "
+        f"({args.max_batch_prompt_tokens:,})."
+    )
+
+sys.stderr.write(
+    f"Prepared {batch_request_count} OpenAI batch requests with estimated "
+    f"{estimated_prompt_tokens:,} prompt tokens "
+    f"(limit {args.max_batch_prompt_tokens:,}).\n"
+)
+
+EXPECTED_BATCH_ENDPOINT = "/v1/chat/completions"
+
+validate_batch_requests(
+    args.batch_file,
+    EXPECTED_BATCH_ENDPOINT,
+    OPENAI_BATCH_MODEL,
+    args.max_batch_prompt_tokens,
+)
 
 if args.dry_run:
     conn.rollback()

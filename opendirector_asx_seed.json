@@ -1,0 +1,164 @@
+[
+  {
+    "exchange_code": "WBC",
+    "issuer_name": "Westpac Banking Corporation",
+    "provider_symbol": "WBC.AX",
+    "aliases": ["Westpac"]
+  },
+  {
+    "exchange_code": "BAP",
+    "issuer_name": "Bapcor Limited",
+    "provider_symbol": "BAP.AX",
+    "aliases": ["Bapcor"]
+  },
+  {
+    "exchange_code": "RIO",
+    "issuer_name": "Rio Tinto Limited",
+    "provider_symbol": "RIO.AX",
+    "aliases": ["Rio Tinto"]
+  },
+  {
+    "exchange_code": "BEN",
+    "issuer_name": "Bendigo and Adelaide Bank Limited",
+    "provider_symbol": "BEN.AX",
+    "aliases": ["Bendigo and Adelaide Bank", "Bendigo & Adelaide Bank"]
+  },
+  {
+    "exchange_code": "EDV",
+    "issuer_name": "Endeavour Group Limited",
+    "provider_symbol": "EDV.AX",
+    "aliases": ["Endeavour Group"]
+  },
+  {
+    "exchange_code": "ANZ",
+    "issuer_name": "ANZ Group Holdings Limited",
+    "provider_symbol": "ANZ.AX",
+    "aliases": ["ANZ", "ANZ Group"]
+  },
+  {
+    "exchange_code": "EML",
+    "issuer_name": "EML Payments Limited",
+    "provider_symbol": "EML.AX",
+    "aliases": ["EML Payments"]
+  },
+  {
+    "exchange_code": "ASX",
+    "issuer_name": "ASX Limited",
+    "provider_symbol": "ASX.AX",
+    "aliases": ["ASX", "ASX Limited"]
+  },
+  {
+    "exchange_code": "QAN",
+    "issuer_name": "Qantas Airways Limited",
+    "provider_symbol": "QAN.AX",
+    "aliases": ["Qantas", "Qantas Airways"]
+  },
+  {
+    "exchange_code": "FMG",
+    "issuer_name": "Fortescue Limited",
+    "provider_symbol": "FMG.AX",
+    "aliases": ["Fortescue", "Fortescue Metals", "Fortescue Metals Group"]
+  },
+  {
+    "exchange_code": "MTS",
+    "issuer_name": "Metcash Limited",
+    "provider_symbol": "MTS.AX",
+    "aliases": ["Metcash"]
+  },
+  {
+    "exchange_code": "TLS",
+    "issuer_name": "Telstra Group Limited",
+    "provider_symbol": "TLS.AX",
+    "aliases": ["Telstra", "Telstra Group"]
+  },
+  {
+    "exchange_code": "AMA",
+    "issuer_name": "AMA Group Limited",
+    "provider_symbol": "AMA.AX",
+    "aliases": ["AMA Group"]
+  },
+  {
+    "exchange_code": "AIZ",
+    "issuer_name": "Air New Zealand Limited",
+    "provider_symbol": "AIZ.AX",
+    "aliases": ["Air New Zealand"]
+  },
+  {
+    "exchange_code": "GNE",
+    "issuer_name": "Genesis Energy Limited",
+    "provider_symbol": "GNE.AX",
+    "aliases": ["Genesis Energy"]
+  },
+  {
+    "exchange_code": "SGR",
+    "issuer_name": "The Star Entertainment Group Limited",
+    "provider_symbol": "SGR.AX",
+    "aliases": ["The Star Entertainment", "The Star Entertainment Group"]
+  },
+  {
+    "exchange_code": "AMP",
+    "issuer_name": "AMP Limited",
+    "provider_symbol": "AMP.AX",
+    "aliases": ["AMP"]
+  },
+  {
+    "exchange_code": "AIA",
+    "issuer_name": "Auckland International Airport Limited",
+    "provider_symbol": "AIA.AX",
+    "aliases": ["Auckland Airport", "Auckland International Airport"]
+  },
+  {
+    "exchange_code": "BPT",
+    "issuer_name": "Beach Energy Limited",
+    "provider_symbol": "BPT.AX",
+    "aliases": ["Beach Energy"]
+  },
+  {
+    "exchange_code": "BVS",
+    "issuer_name": "Bravura Solutions Limited",
+    "provider_symbol": "BVS.AX",
+    "aliases": ["Bravura", "Bravura Solutions"]
+  },
+  {
+    "exchange_code": "CXO",
+    "issuer_name": "Core Lithium Limited",
+    "provider_symbol": "CXO.AX",
+    "aliases": ["Core Lithium"]
+  },
+  {
+    "exchange_code": "FBU",
+    "issuer_name": "Fletcher Building Limited",
+    "provider_symbol": "FBU.AX",
+    "aliases": ["Fletcher", "Fletcher Building"]
+  },
+  {
+    "exchange_code": "HLS",
+    "issuer_name": "Healius Limited",
+    "provider_symbol": "HLS.AX",
+    "aliases": ["Healius"]
+  },
+  {
+    "exchange_code": "LTR",
+    "issuer_name": "Liontown Limited",
+    "provider_symbol": "LTR.AX",
+    "aliases": ["Liontown", "Liontown Resources"]
+  },
+  {
+    "exchange_code": "NAB",
+    "issuer_name": "National Australia Bank Limited",
+    "provider_symbol": "NAB.AX",
+    "aliases": ["NAB", "National Australia Bank"]
+  },
+  {
+    "exchange_code": "NEC",
+    "issuer_name": "Nine Entertainment Co. Holdings Limited",
+    "provider_symbol": "NEC.AX",
+    "aliases": ["Nine Entertainment", "Nine Entertainment Co."]
+  },
+  {
+    "exchange_code": "RAC",
+    "issuer_name": "Racura Oncology Limited",
+    "provider_symbol": "RAC.AX",
+    "aliases": ["Race Oncology", "Racura Oncology"]
+  }
+]
