@@ -73,24 +73,70 @@ def clean_json_for_postgres(json_obj):
 
 
 def release_url_for_retry(local_batch_id, url):
-    released = 0
-    for table_name in ("director_extractions", "director_compensation"):
-        update_cursor.execute(
-            f"delete from {table_name} where batch_id = %s and url = %s",
-            [local_batch_id, url],
-        )
-        released += update_cursor.rowcount
+    update_cursor.execute(
+        """
+        delete from director_extractions queued
+        where queued.batch_id = %s
+          and queued.url = %s
+          and not exists (
+              select 1
+              from filings
+              join director_extraction_raw raw
+                on raw.cikcode = filings.cikcode
+               and raw.accessionnumber = filings.accessionnumber
+              where filings.document_storage_url = queued.url
+          )
+        """,
+        [local_batch_id, url],
+    )
+    released = update_cursor.rowcount
+    update_cursor.execute(
+        """
+        delete from director_compensation queued
+        where queued.batch_id = %s
+          and queued.url = %s
+          and queued.processed is not true
+          and not exists (
+              select 1 from director_details
+              where director_details.url = queued.url
+          )
+        """,
+        [local_batch_id, url],
+    )
+    released += update_cursor.rowcount
     return released
 
 
 def release_batch_for_retry(local_batch_id):
-    released = 0
-    for table_name in ("director_extractions", "director_compensation"):
-        update_cursor.execute(
-            f"delete from {table_name} where batch_id = %s",
-            [local_batch_id],
-        )
-        released += update_cursor.rowcount
+    update_cursor.execute(
+        """
+        delete from director_extractions queued
+        where queued.batch_id = %s
+          and not exists (
+              select 1
+              from filings
+              join director_extraction_raw raw
+                on raw.cikcode = filings.cikcode
+               and raw.accessionnumber = filings.accessionnumber
+              where filings.document_storage_url = queued.url
+          )
+        """,
+        [local_batch_id],
+    )
+    released = update_cursor.rowcount
+    update_cursor.execute(
+        """
+        delete from director_compensation queued
+        where queued.batch_id = %s
+          and queued.processed is not true
+          and not exists (
+              select 1 from director_details
+              where director_details.url = queued.url
+          )
+        """,
+        [local_batch_id],
+    )
+    released += update_cursor.rowcount
     return released
 
 
