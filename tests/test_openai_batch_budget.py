@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from openai_batch_budget import (
     OPENAI_BATCH_MODEL,
     OPENAI_BATCH_REASONING_EFFORT,
+    calculate_batch_cost,
     estimate_request_prompt_tokens,
     validate_batch_requests,
 )
@@ -61,6 +62,10 @@ def test_estimate_request_prompt_tokens_scales_with_content():
 
     assert short_count > 0
     assert long_count > short_count
+
+
+def test_calculate_batch_cost_uses_current_luna_batch_rates():
+    assert calculate_batch_cost(1_000_000, 1_000_000) == pytest.approx(0.70)
 
 
 def test_validate_batch_requests_accepts_expected_model_and_budget(tmp_path):

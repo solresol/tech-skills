@@ -11,6 +11,7 @@ import sys
 import time
 
 from batch_response_parser import RetryableBatchRecordError, extract_tool_arguments
+from openai_batch_budget import calculate_batch_cost
 
 TERMINAL_BATCH_STATUSES = {"completed", "expired", "failed", "cancelled"}
 
@@ -381,9 +382,7 @@ conn.commit()
 if args.show_costs:
     print(f"Prompt tokens:     {total_prompt_tokens}")
     print(f"Completion tokens: {total_completion_tokens}")
-    prompt_pricing = 0.075 / 1000000  # Adjust pricing as needed
-    completion_pricing = 0.3 / 1000000  # Adjust pricing as needed
-    cost = prompt_pricing * total_prompt_tokens + completion_pricing * total_completion_tokens
+    cost = calculate_batch_cost(total_prompt_tokens, total_completion_tokens)
     print(f"Cost (USD):        {cost:.2f}")
 
 cursor.execute("refresh materialized view director_mentions")

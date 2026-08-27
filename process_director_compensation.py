@@ -10,6 +10,7 @@ import pgconnect
 import logging
 
 from batch_response_parser import RetryableBatchRecordError, extract_tool_arguments
+from openai_batch_budget import calculate_batch_cost
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
@@ -260,9 +261,7 @@ except Exception as e:
 if args.show_costs:
     print(f"Prompt tokens:     {total_prompt_tokens}")
     print(f"Completion tokens: {total_completion_tokens}")
-    prompt_pricing = 0.075 / 1000000  # Adjust pricing as needed for the model used
-    completion_pricing = 0.3 / 1000000  # Adjust pricing as needed for the model used
-    cost = prompt_pricing * total_prompt_tokens + completion_pricing * total_completion_tokens
+    cost = calculate_batch_cost(total_prompt_tokens, total_completion_tokens)
     print(f"Cost (USD):        {cost:.2f}")
 
 # No need to create or replace views in this script - that should be done in schema management scripts

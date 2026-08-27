@@ -6,11 +6,20 @@ import tiktoken
 
 OPENAI_BATCH_MODEL = "gpt-5.6-luna"
 OPENAI_BATCH_REASONING_EFFORT = "none"
+OPENAI_BATCH_INPUT_PRICE_PER_MILLION = 0.10
+OPENAI_BATCH_OUTPUT_PRICE_PER_MILLION = 0.60
 DEFAULT_MAX_BATCH_PROMPT_TOKENS = int(
     os.environ.get("OPENAI_MAX_BATCH_PROMPT_TOKENS", "500000")
 )
 TOKENIZER_FALLBACK = "o200k_base"
 TOKEN_ESTIMATE_PADDING = 512
+
+
+def calculate_batch_cost(prompt_tokens, completion_tokens):
+    return (
+        prompt_tokens * OPENAI_BATCH_INPUT_PRICE_PER_MILLION
+        + completion_tokens * OPENAI_BATCH_OUTPUT_PRICE_PER_MILLION
+    ) / 1_000_000
 
 
 def encoding_for_model(model):
