@@ -5,6 +5,7 @@ import tiktoken
 
 
 OPENAI_BATCH_MODEL = "gpt-5.6-luna"
+OPENAI_BATCH_REASONING_EFFORT = "none"
 DEFAULT_MAX_BATCH_PROMPT_TOKENS = int(
     os.environ.get("OPENAI_MAX_BATCH_PROMPT_TOKENS", "500000")
 )
@@ -80,6 +81,19 @@ def validate_batch_requests(
                 problems.append(
                     f"Line {line_number}: unexpected model {model!r} for custom_id"
                     f" {payload.get('custom_id')!r}. Expected {expected_model!r}."
+                )
+
+            if (
+                model == OPENAI_BATCH_MODEL
+                and body.get("tools")
+                and body.get("reasoning_effort")
+                != OPENAI_BATCH_REASONING_EFFORT
+            ):
+                problems.append(
+                    f"Line {line_number}: unexpected reasoning_effort"
+                    f" {body.get('reasoning_effort')!r} for function tools with"
+                    f" {OPENAI_BATCH_MODEL!r}. Expected"
+                    f" {OPENAI_BATCH_REASONING_EFFORT!r}."
                 )
 
             request_tokens = estimate_request_prompt_tokens(payload)

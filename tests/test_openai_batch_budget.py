@@ -8,18 +8,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from openai_batch_budget import (
     OPENAI_BATCH_MODEL,
+    OPENAI_BATCH_REASONING_EFFORT,
     estimate_request_prompt_tokens,
     validate_batch_requests,
 )
 
 
-def make_batch_request(content="hello", model=OPENAI_BATCH_MODEL):
+def make_batch_request(
+    content="hello",
+    model=OPENAI_BATCH_MODEL,
+    reasoning_effort=OPENAI_BATCH_REASONING_EFFORT,
+):
     return {
         "custom_id": "https://example.test/filing.htm",
         "method": "POST",
         "url": "/v1/chat/completions",
         "body": {
             "model": model,
+            "reasoning_effort": reasoning_effort,
             "messages": [
                 {"role": "system", "content": "Extract directors."},
                 {"role": "user", "content": content},
@@ -84,6 +90,27 @@ def test_validate_batch_requests_rejects_unexpected_model(tmp_path):
         )
 
     assert "unexpected model 'gpt-5'" in str(excinfo.value)
+
+
+@pytest.mark.parametrize("reasoning_effort", [None, "low", "medium"])
+def test_validate_batch_requests_rejects_unsupported_tool_reasoning_effort(
+    tmp_path,
+    reasoning_effort,
+):
+    request = make_batch_request(reasoning_effort=reasoning_effort)
+    if reasoning_effort is None:
+        del request["body"]["reasoning_effort"]
+    batch_file = write_batch_file(tmp_path, [request])
+
+    with pytest.raises(SystemExit) as excinfo:
+        validate_batch_requests(
+            batch_file,
+            "/v1/chat/completions",
+            OPENAI_BATCH_MODEL,
+            500_000,
+        )
+
+    assert "unexpected reasoning_effort" in str(excinfo.value)
 
 
 def test_validate_batch_requests_rejects_over_budget_batch(tmp_path):

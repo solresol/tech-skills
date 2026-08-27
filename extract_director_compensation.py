@@ -12,6 +12,7 @@ import json
 from openai_batch_budget import (
     DEFAULT_MAX_BATCH_PROMPT_TOKENS,
     OPENAI_BATCH_MODEL,
+    OPENAI_BATCH_REASONING_EFFORT,
     estimate_request_prompt_tokens,
     validate_batch_requests,
 )
@@ -265,6 +266,7 @@ If any information is not available for a director, use appropriate default valu
         "url": "/v1/chat/completions",
         "body": {
             "model": OPENAI_BATCH_MODEL,
+            "reasoning_effort": OPENAI_BATCH_REASONING_EFFORT,
             "messages": [{"role": "system", "content": system_prompt}, { "role": "user", "content": text_version}],
             "temperature": 0,
             "tools": tools,

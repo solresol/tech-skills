@@ -12,6 +12,8 @@ import time
 
 from batch_response_parser import RetryableBatchRecordError, extract_tool_arguments
 
+TERMINAL_BATCH_STATUSES = {"completed", "expired", "failed", "cancelled"}
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
                     default="db.conf",
@@ -51,10 +53,12 @@ cursor.execute("select id, openai_batch_id from director_extract_batches where w
 
 total_prompt_tokens = 0
 total_completion_tokens = 0
+total_failed_records = 0
+total_released_for_retry = 0
+retrieved_batch_count = 0
+failure_examples = []
 
 update_cursor.execute("begin transaction")
-work_to_be_done = False
-
 # Function to clean null characters and other problematic Unicode
 def clean_json_for_postgres(json_obj):
     if isinstance(json_obj, str):
@@ -79,6 +83,46 @@ def release_url_for_retry(local_batch_id, url):
     return released
 
 
+def release_batch_for_retry(local_batch_id):
+    released = 0
+    for table_name in ("director_extractions", "director_compensation"):
+        update_cursor.execute(
+            f"delete from {table_name} where batch_id = %s",
+            [local_batch_id],
+        )
+        released += update_cursor.rowcount
+    return released
+
+
+def handle_failed_record(local_batch_id, openai_batch_id, record):
+    url = record.get("custom_id")
+    response = record.get("response") or {}
+    body = response.get("body")
+    if not isinstance(body, dict):
+        body = {}
+    error = body.get("error")
+    error_message = error.get("message") if isinstance(error, dict) else None
+    request_id = response.get("request_id")
+
+    if url is None:
+        logging.error(
+            "Batch %s (local_id=%s) returned a failed record without custom_id",
+            openai_batch_id,
+            local_batch_id,
+        )
+        return 0
+
+    released = release_url_for_retry(local_batch_id, url)
+    if len(failure_examples) < 10:
+        context = [f"url={url}"]
+        if request_id:
+            context.append(f"request_id={request_id}")
+        if error_message:
+            context.append(f"error={error_message}")
+        failure_examples.append(", ".join(context))
+    return released
+
+
 def format_record_context(error):
     context = []
     if getattr(error, "request_id", None):
@@ -91,37 +135,82 @@ def format_record_context(error):
 
 for local_batch_id, openai_batch_id in cursor:
     openai_result = client.batches.retrieve(openai_batch_id)
-    if openai_result.status != 'completed' and openai_result.status != 'expired':
+    if openai_result.status not in TERMINAL_BATCH_STATUSES:
         continue
+    batch_failed_records = 0
+    batch_released_for_retry = 0
+    request_counts = getattr(openai_result, "request_counts", None)
+    reported_failed_records = getattr(
+        request_counts,
+        "failed",
+        0,
+    ) or 0
     if openai_result.error_file_id is not None:
         try:
             error_file_response = client.files.content(openai_result.error_file_id)
-            sys.stderr.write(error_file_response.text)
         except openai.NotFoundError:
             logging.warning(
                 "OpenAI returned error_file_id %s but the file was unavailable (likely expired)",
                 openai_result.error_file_id,
             )
+        else:
+            for row in error_file_response.text.splitlines():
+                if not row.strip():
+                    continue
+                record = json.loads(row)
+                batch_failed_records += 1
+                batch_released_for_retry += handle_failed_record(
+                    local_batch_id,
+                    openai_batch_id,
+                    record,
+                )
     if openai_result.output_file_id is None:
+        batch_released_for_retry += release_batch_for_retry(local_batch_id)
+        batch_failed_records = max(
+            batch_failed_records,
+            reported_failed_records,
+            1,
+        )
         logging.warning(
-            "Batch %s (local_id=%s) has status=%s but no output_file_id; skipping",
+            "Batch %s (local_id=%s) has status=%s and no output_file_id; "
+            "released %s queued row(s) for retry and marked it retrieved",
             openai_batch_id,
             local_batch_id,
             openai_result.status,
+            batch_released_for_retry,
         )
+        update_cursor.execute(
+            "update director_extract_batches set when_retrieved = current_timestamp where id = %s",
+            [local_batch_id],
+        )
+        total_failed_records += batch_failed_records
+        total_released_for_retry += batch_released_for_retry
+        retrieved_batch_count += 1
         continue
 
     try:
         file_response = client.files.content(openai_result.output_file_id)
     except openai.NotFoundError:
+        batch_released_for_retry += release_batch_for_retry(local_batch_id)
+        reported_total_records = getattr(
+            request_counts,
+            "total",
+            0,
+        ) or 0
+        batch_failed_records = max(
+            batch_failed_records,
+            reported_failed_records,
+            reported_total_records,
+            1,
+        )
         logging.error(
             "Batch %s (local_id=%s) output file %s not found (likely expired). "
-            "Marking batch as retrieved with no results.",
+            "Released %s queued row(s) for retry and marked it retrieved.",
             openai_batch_id,
             local_batch_id,
             openai_result.output_file_id,
+            batch_released_for_retry,
         )
-        # Mark the batch as retrieved so we don't keep retrying a lost file
         update_cursor.execute(
             "update director_extract_batches set when_retrieved = current_timestamp where id = %s",
             [local_batch_id],
@@ -131,6 +220,9 @@ for local_batch_id, openai_batch_id in cursor:
             f"File {openai_result.output_file_id} no longer available.",
             file=sys.stderr,
         )
+        total_failed_records += batch_failed_records
+        total_released_for_retry += batch_released_for_retry
+        retrieved_batch_count += 1
         continue
     iterator = file_response.text.splitlines()
     
@@ -138,6 +230,7 @@ for local_batch_id, openai_batch_id in cursor:
         record = json.loads(row)
         url = record.get('custom_id')
         if url is None:
+            batch_failed_records += 1
             logging.error(
                 "Batch %s (local_id=%s) returned a record without custom_id; skipping unrecoverable row",
                 openai_batch_id,
@@ -151,40 +244,11 @@ for local_batch_id, openai_batch_id in cursor:
             body = {}
 
         if response.get('status_code') != 200:
-            lookup_cursor.execute(
-                "select cikcode, accessionNumber, filingDate from filings where document_storage_url = %s",
-                [url],
-            )
-            filing_info = lookup_cursor.fetchone()
-
-            request_id = response.get('request_id')
-            error_message = None
-            if isinstance(body, dict):
-                error = body.get('error')
-                if isinstance(error, dict):
-                    error_message = error.get('message')
-
-            if filing_info:
-                cikcode, accession_number, filing_date = filing_info
-                sys.stderr.write(
-                    f"Failed to download {url} (CIK {cikcode}, accession {accession_number}, filed {filing_date})"
-                )
-            else:
-                sys.stderr.write(f"Failed to download {url}")
-
-            if request_id:
-                sys.stderr.write(f" request_id={request_id}")
-            if error_message:
-                sys.stderr.write(f": {error_message}")
-            sys.stderr.write("\n")
-            released = release_url_for_retry(local_batch_id, url)
-            logging.warning(
-                "Batch %s (local_id=%s) returned status_code=%s for %s and released %s queued row(s) for retry",
-                openai_batch_id,
+            batch_failed_records += 1
+            batch_released_for_retry += handle_failed_record(
                 local_batch_id,
-                response.get('status_code'),
-                url,
-                released,
+                openai_batch_id,
+                record,
             )
             continue
 
@@ -196,6 +260,8 @@ for local_batch_id, openai_batch_id in cursor:
         filing = lookup_cursor.fetchone()
         if filing is None:
             released = release_url_for_retry(local_batch_id, url)
+            batch_failed_records += 1
+            batch_released_for_retry += released
             logging.error(
                 "Batch %s (local_id=%s) returned URL %s but no matching filing was found. Released %s queued row(s) for retry.",
                 openai_batch_id,
@@ -218,6 +284,8 @@ for local_batch_id, openai_batch_id in cursor:
             arguments = clean_json_for_postgres(arguments)
         except RetryableBatchRecordError as exc:
             released = release_url_for_retry(local_batch_id, url)
+            batch_failed_records += 1
+            batch_released_for_retry += released
             logging.warning(
                 "Batch %s (local_id=%s) returned unusable structured output for %s: %s%s. Released %s queued row(s) for retry.",
                 openai_batch_id,
@@ -249,6 +317,18 @@ for local_batch_id, openai_batch_id in cursor:
     
     # Mark the batch as retrieved
     update_cursor.execute("update director_extract_batches set when_retrieved = current_timestamp where id = %s", [local_batch_id])
+    batch_failed_records = max(batch_failed_records, reported_failed_records)
+    total_failed_records += batch_failed_records
+    total_released_for_retry += batch_released_for_retry
+    retrieved_batch_count += 1
+    if batch_failed_records:
+        logging.warning(
+            "Batch %s (local_id=%s) had %s failed request(s) and released %s queued row(s) for retry",
+            openai_batch_id,
+            local_batch_id,
+            batch_failed_records,
+            batch_released_for_retry,
+        )
 
 conn.commit()
 
@@ -262,3 +342,14 @@ if args.show_costs:
 
 cursor.execute("refresh materialized view director_mentions")
 conn.commit()
+
+if total_failed_records:
+    print(
+        f"ERROR: Retrieved {retrieved_batch_count} batch(es) with "
+        f"{total_failed_records} failed request(s); released "
+        f"{total_released_for_retry} queued row(s) for retry.",
+        file=sys.stderr,
+    )
+    for example in failure_examples:
+        print(f"ERROR EXAMPLE: {example}", file=sys.stderr)
+    sys.exit(1)

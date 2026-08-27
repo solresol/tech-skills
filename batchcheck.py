@@ -9,6 +9,7 @@ import pgconnect
 import time
 
 NO_WORK_EXIT_CODE = 3
+TERMINAL_BATCH_STATUSES = {"completed", "expired", "failed", "cancelled"}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--database-config",
@@ -30,9 +31,13 @@ update_cursor = conn.cursor()
 
 # Updated query to count files instead of words
 query = """
-    select director_extract_batches.id, openai_batch_id, count(url) 
-    from director_extract_batches 
-    join director_extractions on (batch_id = director_extract_batches.id) 
+    select director_extract_batches.id, openai_batch_id, count(queued.url)
+    from director_extract_batches
+    join (
+        select batch_id, url from director_extractions
+        union all
+        select batch_id, url from director_compensation
+    ) as queued on (queued.batch_id = director_extract_batches.id)
     where when_sent is not null 
     and when_retrieved is null 
 """
@@ -51,7 +56,7 @@ while True:
 
     for local_batch_id, openai_batch_id, number_of_files in cursor:
         openai_result = client.batches.retrieve(openai_batch_id)
-        if openai_result.status == 'completed':
+        if openai_result.status in TERMINAL_BATCH_STATUSES:
             work_to_be_done = True
         
         if openai_result.status in ['in_progress', 'completed']:
@@ -67,7 +72,7 @@ while True:
             progress.set_description(openai_result.status)
             if openai_result.status in ['in_progress', 'completed']:
                 progress.update(openai_result.request_counts.completed - progress.n)
-            if openai_result.status == 'completed':
+            if openai_result.status in TERMINAL_BATCH_STATUSES:
                 break
             time.sleep(15)
             continue
