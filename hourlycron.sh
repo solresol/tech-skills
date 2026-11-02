@@ -88,7 +88,7 @@ if do_batchcheck; then
         completed)
             log "Hourly batch check detected completed batches; running batchfetch step"
             if run_batchfetch; then
-                notify "Hourly batch check fetched completed batches successfully"
+                log "Hourly batch check fetched completed batches successfully"
                 exit 0
             else
                 status=$?
